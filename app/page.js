@@ -1,84 +1,187 @@
-// import Image from "next/image";
+"use client";
 
-// export default function Home() {
-//   return (
-//     <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-//       <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-//         <Image
-//           className="dark:invert"
-//           src="/next.svg"
-//           alt="Next.js logo"
-//           width={100}
-//           height={20}
-//           priority
-//         />
-//         <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-//           <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-//             To get started, edit the page.js file.
-//           </h1>
-//           <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-//             Looking for a starting point or more instructions? Head over to{" "}
-//             <a
-//               href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-//               className="font-medium text-zinc-950 dark:text-zinc-50"
-//             >
-//               Templates
-//             </a>{" "}
-//             or the{" "}
-//             <a
-//               href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-//               className="font-medium text-zinc-950 dark:text-zinc-50"
-//             >
-//               Learning
-//             </a>{" "}
-//             center.
-//           </p>
-//         </div>
-//         <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-//           <a
-//             className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-//             href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-//             target="_blank"
-//             rel="noopener noreferrer"
-//           >
-//             <Image
-//               className="dark:invert"
-//               src="/vercel.svg"
-//               alt="Vercel logomark"
-//               width={16}
-//               height={16}
-//             />
-//             Deploy Now
-//           </a>
-//           <a
-//             className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-//             href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-//             target="_blank"
-//             rel="noopener noreferrer"
-//           >
-//             Documentation
-//           </a>
-//         </div>
-//       </main>
-//     </div>
-//   );
-// }
+import { useState } from "react";
+
 export default function Home() {
+  const [message, setMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState([
+    {
+      role: "assistant",
+      content:
+        "Heyy, I’m Glow Up Bot 💄 Ask me about makeup, hairstyles, skincare, or outfit ideas.",
+    },
+  ]);
+  const [loading, setLoading] = useState(false);
+
+  async function sendMessage() {
+    if (!message.trim()) return;
+
+    const updatedHistory = [...chatHistory, { role: "user", content: message }];
+    setChatHistory(updatedHistory);
+    setLoading(true);
+
+    try {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + "/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: message,
+          messages: updatedHistory,
+          profile: {},
+        }),
+      });
+
+      const data = await response.json();
+
+      setChatHistory([
+        ...updatedHistory,
+        {
+          role: "assistant",
+          content: data.reply || "No response came back from the bot.",
+        },
+      ]);
+      setMessage("");
+    } catch (error) {
+      setChatHistory([
+        ...updatedHistory,
+        {
+          role: "assistant",
+          content: "Something went wrong connecting to the backend.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <main style={{
-      backgroundColor: "pink",
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    }}>
-      <h1 style={{
-        fontSize: "2.5rem",
-        fontWeight: "bold",
-        color: "#000",
-      }}>
-        Welcome to Glow Up Bot 💄
-      </h1>
+    <main
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(to bottom, #1a1a1a, #2d0b45)",
+        color: "white",
+        padding: "40px 20px",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "900px",
+          margin: "0 auto",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "3rem",
+            fontWeight: "bold",
+            marginBottom: "10px",
+            textAlign: "center",
+          }}
+        >
+          Glow Up Bot 💄
+        </h1>
+
+        <p
+          style={{
+            textAlign: "center",
+            color: "#f3d9ff",
+            marginBottom: "30px",
+            fontSize: "1.1rem",
+          }}
+        >
+          Your beauty, fashion, skincare, and style assistant
+        </p>
+
+        <div
+          style={{
+            backgroundColor: "rgba(255,255,255,0.08)",
+            border: "1px solid rgba(255,255,255,0.15)",
+            borderRadius: "20px",
+            padding: "20px",
+            minHeight: "450px",
+            marginBottom: "20px",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+          }}
+        >
+          {chatHistory.map((msg, index) => (
+            <div
+              key={index}
+              style={{
+                display: "flex",
+                justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
+                marginBottom: "16px",
+              }}
+            >
+              <div
+                style={{
+                  maxWidth: "75%",
+                  padding: "12px 16px",
+                  borderRadius: "16px",
+                  backgroundColor:
+                    msg.role === "user" ? "#d946ef" : "rgba(255,255,255,0.12)",
+                  color: "white",
+                  lineHeight: "1.5",
+                }}
+              >
+                <strong>{msg.role === "user" ? "You" : "Glow Up Bot"}:</strong>{" "}
+                {msg.content}
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <p style={{ color: "#ffd6f7", marginTop: "10px" }}>
+              Glow Up Bot is thinking...
+            </p>
+          )}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "12px",
+          }}
+        >
+          <input
+            type="text"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") sendMessage();
+            }}
+            placeholder="Ask for a makeup look, hairstyle, skincare routine, or outfit idea..."
+            style={{
+              flex: 1,
+              padding: "16px",
+              borderRadius: "14px",
+              border: "1px solid rgba(255,255,255,0.2)",
+              backgroundColor: "rgba(255,255,255,0.08)",
+              color: "white",
+              fontSize: "1rem",
+              outline: "none",
+            }}
+          />
+
+          <button
+            onClick={sendMessage}
+            disabled={loading}
+            style={{
+              padding: "16px 22px",
+              borderRadius: "14px",
+              border: "none",
+              backgroundColor: "#ff4fd8",
+              color: "white",
+              fontWeight: "bold",
+              cursor: "pointer",
+              fontSize: "1rem",
+            }}
+          >
+            Send
+          </button>
+        </div>
+      </div>
     </main>
   );
 }
