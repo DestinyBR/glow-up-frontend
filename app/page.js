@@ -13,51 +13,55 @@ export default function Home() {
   ]);
   const [loading, setLoading] = useState(false);
 
-  async function sendMessage() {
-    if (!message.trim()) return;
+async function sendMessage() {
+  if (!message.trim()) return;
 
-    const updatedHistory = [...chatHistory, { role: "user", content: message }];
-    setChatHistory(updatedHistory);
-    setLoading(true);
+  const updatedHistory = [...chatHistory, { role: "user", content: message }];
+  setChatHistory(updatedHistory);
+  setLoading(true);
 
-    try {
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + "/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: message,
-          messages: updatedHistory,
-          profile: {},
-        }),
-      });
+  try {
+    const response = await fetch(process.env.NEXT_PUBLIC_API_URL + "/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: message,
+        messages: updatedHistory,
+        profile: {},
+      }),
+    });
 
-      if (!response.ok) {
-        throw new Error("Request failed");
-}
-      const data = await response.json();
+    const data = await response.json();
 
-      setChatHistory([
-        ...updatedHistory,
-        {
-          role: "assistant",
-          content: data.reply || "No response came back from the bot.",
-        },
-      ]);
-      setMessage("");
-    } catch (error) {
-      setChatHistory([
-        ...updatedHistory,
-        {
-          role: "assistant",
-          content: "Something went wrong connecting to the backend.",
-        },
-      ]);
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      throw new Error(data.detail || "Request failed");
     }
+
+    setChatHistory([
+      ...updatedHistory,
+      {
+        role: "assistant",
+        content: data.reply || "No response came back from the bot.",
+      },
+    ]);
+
+    setMessage("");
+  } catch (error) {
+    console.error("FRONTEND CHAT ERROR:", error);
+
+    setChatHistory([
+      ...updatedHistory,
+      {
+        role: "assistant",
+        content: error.message || "Something went wrong connecting to the backend.",
+      },
+    ]);
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <main
