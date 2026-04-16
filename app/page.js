@@ -33,6 +33,9 @@ export default function Home() {
         }),
       });
 
+      if (!response.ok) {
+        throw new Error("Request failed");
+}
       const data = await response.json();
 
       setChatHistory([
