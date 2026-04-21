@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 
-// ── Default profile shape ──────────────────────────────────────────────────
 const DEFAULT_PROFILE = {
   name: "",
   favorite_colors: [],
@@ -16,38 +15,33 @@ const DEFAULT_PROFILE = {
   notes: [],
 };
 
-
 function Field({ label, field, placeholder, profile, setProfile }) {
   return (
-    <div style={{ marginBottom: "10px" }}>
-      <label
-        style={{
-          fontSize: "0.8rem",
-          color: "#f3d9ff",
-          display: "block",
-          marginBottom: "4px",
-        }}
-      >
-        {label}
-      </label>
+    <div className="field-wrap">
+      <label className="field-label">{label}</label>
       <input
+        className="field-input"
         type="text"
         value={profile[field] || ""}
         placeholder={placeholder}
         onChange={(e) => setProfile({ ...profile, [field]: e.target.value })}
-        style={{
-          width: "100%",
-          padding: "10px",
-          borderRadius: "10px",
-          border: "1px solid rgba(255,255,255,0.2)",
-          backgroundColor: "rgba(255,255,255,0.08)",
-          color: "white",
-          fontSize: "0.9rem",
-          boxSizing: "border-box",
-          outline: "none",
-        }}
       />
     </div>
+  );
+}
+
+function isImageRequest(text) {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes("generate an image") ||
+    lower.includes("create an image") ||
+    lower.includes("make an image") ||
+    lower.includes("show me an image") ||
+    lower.includes("visualize") ||
+    lower.includes("inspo image") ||
+    lower.includes("outfit image") ||
+    lower.includes("hairstyle image") ||
+    lower.includes("makeup look image")
   );
 }
 
@@ -57,20 +51,24 @@ export default function Home() {
     {
       role: "assistant",
       content:
-        "Heyy, I'm Glow Up Bot 💄 Ask me about makeup, hairstyles, skincare, or outfit ideas.",
+        "Heyy, I'm Glow Up Bot 💄 Ask me about makeup, hairstyles, skincare, outfit ideas, or beauty inspo images.",
+      type: "text",
     },
   ]);
   const [loading, setLoading] = useState(false);
 
-  // ── Profile state ───────────────────────────────────────────────────────
   const [profile, setProfileState] = useState(DEFAULT_PROFILE);
   const [showProfile, setShowProfile] = useState(false);
 
-  // ── Camera / selfie analysis state ──────────────────────────────────────
   const [analyzingFace, setAnalyzingFace] = useState(false);
-  const fileInputRef = useRef(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const [cameraReady, setCameraReady] = useState(false);
 
-  // Load profile from localStorage on first render
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+
   useEffect(() => {
     const saved = localStorage.getItem("glowup_profile");
     if (saved) {
@@ -80,71 +78,68 @@ export default function Home() {
     }
   }, []);
 
-  // Save profile to localStorage whenever it changes
   const setProfile = (newProfile) => {
     setProfileState(newProfile);
     localStorage.setItem("glowup_profile", JSON.stringify(newProfile));
   };
 
-  // ── Send message ────────────────────────────────────────────────────────
-  async function sendMessage() {
-    if (!message.trim()) return;
+  function stopCamera() {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setCameraReady(false);
+  }
 
-    const updatedHistory = [...chatHistory, { role: "user", content: message }];
-    setChatHistory(updatedHistory);
-    setLoading(true);
-
+  async function openCamera() {
     try {
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + "/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: message,
-          messages: updatedHistory,
-          profile: profile,
-        }),
+      setCameraError("");
+      setCameraOpen(true);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
       });
 
-      const data = await response.json();
+      streamRef.current = stream;
 
-      if (!response.ok) throw new Error(data.detail || "Request failed");
-
-      if (data.profile) setProfile(data.profile);
-
-      setChatHistory([
-        ...updatedHistory,
-        {
-          role: "assistant",
-          content: data.reply || "No response came back from the bot.",
-        },
-      ]);
-
-      setMessage("");
-    } catch (error) {
-      console.error("FRONTEND CHAT ERROR:", error);
-      setChatHistory([
-        ...updatedHistory,
-        {
-          role: "assistant",
-          content:
-            error.message || "Something went wrong connecting to the backend.",
-        },
-      ]);
-    } finally {
-      setLoading(false);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = async () => {
+          try {
+            await videoRef.current.play();
+            setCameraReady(true);
+          } catch (err) {
+            console.error("VIDEO PLAY ERROR:", err);
+            setCameraError("Camera opened, but video could not start.");
+          }
+        };
+      }
+    } catch (err) {
+      console.error("CAMERA ERROR:", err);
+      setCameraError(
+        "Unable to access camera. Make sure you allow camera permission and are using localhost."
+      );
+      setCameraOpen(false);
     }
   }
 
-  // ── Face analysis from selfie / camera ──────────────────────────────────
-  async function handleFaceUpload(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  function closeCamera() {
+    stopCamera();
+    setCameraOpen(false);
+    setCameraError("");
+  }
 
+  async function analyzeBlob(blob) {
     setAnalyzingFace(true);
 
     try {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", blob, "selfie.jpg");
       formData.append(
         "extra_context",
         "Please estimate face shape, skin tone, undertone, and suggest flattering hairstyles."
@@ -160,12 +155,9 @@ export default function Home() {
       );
 
       const data = await response.json();
-
       if (!response.ok) throw new Error(data.detail || "Face analysis failed");
 
-      if (data.profile) {
-        setProfile(data.profile);
-      }
+      if (data.profile) setProfile(data.profile);
 
       const analysis = data.analysis || {};
 
@@ -186,7 +178,6 @@ ${
 }
 
 Suggested makeup look: ${analysis.makeup_look || "No makeup look returned"}
-
 Blush placement: ${analysis.blush_placement || "Not provided"}
 Contour/Bronzer: ${analysis.contour_bronzer || "Not provided"}
 
@@ -203,6 +194,7 @@ ${
         {
           role: "assistant",
           content: prettyReply,
+          type: "text",
         },
       ]);
     } catch (error) {
@@ -213,218 +205,285 @@ ${
           role: "assistant",
           content:
             error.message || "Something went wrong analyzing your selfie.",
+          type: "text",
         },
       ]);
     } finally {
       setAnalyzingFace(false);
-      event.target.value = "";
+    }
+  }
+
+  async function capturePhoto() {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) return;
+        await analyzeBlob(blob);
+        closeCamera();
+      },
+      "image/jpeg",
+      0.95
+    );
+  }
+
+  async function handleFileUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    await analyzeBlob(file);
+    event.target.value = "";
+  }
+
+  async function generateImageFromPrompt(userPrompt) {
+    try {
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_API_URL + "/generate-image",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: userPrompt }),
+        }
+      );
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Image generation failed");
+
+      return data.image_base64;
+    } catch (error) {
+      console.error("IMAGE GENERATION ERROR:", error);
+      throw error;
+    }
+  }
+
+  async function sendMessage() {
+    if (!message.trim()) return;
+
+    const userMessage = message;
+    const updatedHistory = [
+      ...chatHistory,
+      { role: "user", content: userMessage, type: "text" },
+    ];
+    setChatHistory(updatedHistory);
+    setLoading(true);
+    setMessage("");
+
+    try {
+      const chatResponse = await fetch(process.env.NEXT_PUBLIC_API_URL + "/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMessage,
+          messages: updatedHistory,
+          profile,
+        }),
+      });
+
+      const chatData = await chatResponse.json();
+      if (!chatResponse.ok) {
+        throw new Error(chatData.detail || "Chat request failed");
+      }
+
+      if (chatData.profile) setProfile(chatData.profile);
+
+      const newMessages = [
+        ...updatedHistory,
+        {
+          role: "assistant",
+          content: chatData.reply || "No response came back from the bot.",
+          type: "text",
+        },
+      ];
+
+      if (isImageRequest(userMessage)) {
+        const imageBase64 = await generateImageFromPrompt(userMessage);
+
+        newMessages.push({
+          role: "assistant",
+          content: "I made a beauty inspo image based on your request ✨",
+          type: "image",
+          imageSrc: `data:image/png;base64,${imageBase64}`,
+        });
+      }
+
+      setChatHistory(newMessages);
+    } catch (error) {
+      console.error("FRONTEND CHAT ERROR:", error);
+      setChatHistory([
+        ...updatedHistory,
+        {
+          role: "assistant",
+          content:
+            error.message || "Something went wrong connecting to the backend.",
+          type: "text",
+        },
+      ]);
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(to bottom, #1a1a1a, #2d0b45)",
-        color: "white",
-        padding: "40px 20px",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
-        {/* Header */}
-        <h1
-          style={{
-            fontSize: "3rem",
-            fontWeight: "bold",
-            marginBottom: "10px",
-            textAlign: "center",
-          }}
-        >
-          Glow Up Bot 💄
-        </h1>
-        <p
-          style={{
-            textAlign: "center",
-            color: "#f3d9ff",
-            marginBottom: "20px",
-            fontSize: "1.1rem",
-          }}
-        >
-          Your beauty, fashion, skincare, and style assistant
-        </p>
+    <main className="page-shell">
+      <div className="bg-orb orb-1" />
+      <div className="bg-orb orb-2" />
 
-        {/* Profile toggle button */}
-        <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <button
-            onClick={() => setShowProfile(!showProfile)}
-            style={{
-              padding: "10px 22px",
-              borderRadius: "12px",
-              border: "1px solid rgba(255,255,255,0.25)",
-              backgroundColor: showProfile ? "#ff4fd8" : "rgba(255,255,255,0.1)",
-              color: "white",
-              cursor: "pointer",
-              fontWeight: "bold",
-              fontSize: "0.95rem",
-            }}
-          >
-            {showProfile ? "Hide Profile ▲" : "My Profile ✨"}
-          </button>
-        </div>
-
-        {/* Profile panel */}
-        {showProfile && (
-          <div
-            style={{
-              backgroundColor: "rgba(255,255,255,0.07)",
-              border: "1px solid rgba(255,255,255,0.15)",
-              borderRadius: "20px",
-              padding: "20px",
-              marginBottom: "20px",
-            }}
-          >
-            <h2 style={{ fontSize: "1.2rem", marginBottom: "16px", color: "#ff4fd8" }}>
-              Your Beauty Profile
-            </h2>
-            <p style={{ fontSize: "0.82rem", color: "#c9a0dc", marginBottom: "16px" }}>
-              Fill this in so Glow Up Bot gives you the most personalized advice. It saves automatically.
-            </p>
-
-            <Field
-              label="Your Name"
-              field="name"
-              placeholder="e.g. Maya"
-              profile={profile}
-              setProfile={setProfile}
-            />
-            <Field
-              label="Skin Tone"
-              field="skin_tone"
-              placeholder="e.g. light, medium, deep"
-              profile={profile}
-              setProfile={setProfile}
-            />
-            <Field
-              label="Undertone"
-              field="undertone"
-              placeholder="e.g. warm, cool, neutral"
-              profile={profile}
-              setProfile={setProfile}
-            />
-            <Field
-              label="Face Shape"
-              field="face_shape"
-              placeholder="e.g. oval, round, square"
-              profile={profile}
-              setProfile={setProfile}
-            />
-            <Field
-              label="Hair Texture"
-              field="hair_texture"
-              placeholder="e.g. 4c coils, fine straight, wavy"
-              profile={profile}
-              setProfile={setProfile}
-            />
-            <Field
-              label="Budget"
-              field="budget"
-              placeholder="e.g. drugstore, mid-range, luxury"
-              profile={profile}
-              setProfile={setProfile}
-            />
-
-            {/* Selfie / camera button */}
-            <div style={{ marginTop: "18px" }}>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="user"
-                onChange={handleFaceUpload}
-                style={{ display: "none" }}
-              />
-
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={analyzingFace}
-                style={{
-                  padding: "12px 18px",
-                  borderRadius: "12px",
-                  border: "none",
-                  backgroundColor: "#ff4fd8",
-                  color: "white",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                  fontSize: "0.95rem",
-                }}
-              >
-                {analyzingFace ? "Analyzing Selfie..." : "Use Camera / Upload Selfie 📸"}
-              </button>
-
-              <p
-                style={{
-                  fontSize: "0.8rem",
-                  color: "#c9a0dc",
-                  marginTop: "10px",
-                  lineHeight: "1.4",
-                }}
-              >
-                Upload a selfie or use your camera so Glow Up Bot can estimate your face shape,
-                skin tone, and undertone, then suggest flattering hairstyles.
+      <div className="app-wrap">
+        <header className="hero-card">
+          <div className="hero-top">
+            <div>
+              <h1 className="hero-title">Glow Up Bot 💄</h1>
+              <p className="hero-subtitle">
+                Your beauty, fashion, skincare, and style assistant
               </p>
             </div>
-          </div>
-        )}
 
-        {/* Chat window */}
-        <div
-          style={{
-            backgroundColor: "rgba(255,255,255,0.08)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            borderRadius: "20px",
-            padding: "20px",
-            minHeight: "450px",
-            marginBottom: "20px",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
-          }}
-        >
-          {chatHistory.map((msg, index) => (
-            <div
-              key={index}
-              style={{
-                display: "flex",
-                justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-                marginBottom: "16px",
-              }}
+            <button
+              onClick={() => setShowProfile(!showProfile)}
+              className="primary-btn"
             >
-              <div
-                style={{
-                  maxWidth: "75%",
-                  padding: "12px 16px",
-                  borderRadius: "16px",
-                  backgroundColor:
-                    msg.role === "user" ? "#d946ef" : "rgba(255,255,255,0.12)",
-                  color: "white",
-                  lineHeight: "1.5",
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                <strong>{msg.role === "user" ? "You" : "Glow Up Bot"}:</strong>{" "}
-                {msg.content}
+              {showProfile ? "Hide Profile ▲" : "My Profile ✨"}
+            </button>
+          </div>
+        </header>
+
+        {showProfile && (
+          <section className="panel-card">
+            <div className="panel-header">
+              <div>
+                <h2 className="panel-title">Your Beauty Profile</h2>
+                <p className="panel-copy">
+                  Fill this in so Glow Up Bot gives you more personalized advice.
+                  It saves automatically in your browser.
+                </p>
               </div>
             </div>
-          ))}
 
-          {(loading || analyzingFace) && (
-            <p style={{ color: "#ffd6f7", marginTop: "10px" }}>
-              Glow Up Bot is thinking...
+            <div className="profile-grid">
+              <Field
+                label="Your Name"
+                field="name"
+                placeholder="e.g. Maya"
+                profile={profile}
+                setProfile={setProfile}
+              />
+              <Field
+                label="Skin Tone"
+                field="skin_tone"
+                placeholder="e.g. light, medium, deep"
+                profile={profile}
+                setProfile={setProfile}
+              />
+              <Field
+                label="Undertone"
+                field="undertone"
+                placeholder="e.g. warm, cool, neutral"
+                profile={profile}
+                setProfile={setProfile}
+              />
+              <Field
+                label="Face Shape"
+                field="face_shape"
+                placeholder="e.g. oval, round, square"
+                profile={profile}
+                setProfile={setProfile}
+              />
+              <Field
+                label="Hair Texture"
+                field="hair_texture"
+                placeholder="e.g. 4c coils, fine straight, wavy"
+                profile={profile}
+                setProfile={setProfile}
+              />
+              <Field
+                label="Budget"
+                field="budget"
+                placeholder="e.g. drugstore, mid-range, luxury"
+                profile={profile}
+                setProfile={setProfile}
+              />
+            </div>
+
+            <div className="camera-actions">
+              <button
+                onClick={openCamera}
+                className="primary-btn"
+                disabled={analyzingFace}
+              >
+                {analyzingFace ? "Analyzing..." : "Open Camera 📸"}
+              </button>
+
+              <label className="secondary-btn">
+                Upload Selfie
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  style={{ display: "none" }}
+                />
+              </label>
+            </div>
+
+            <p className="micro-copy">
+              Use your camera live or upload a selfie so Glow Up Bot can estimate
+              face shape, skin tone, undertone, and suggest flattering hairstyles.
             </p>
-          )}
-        </div>
+          </section>
+        )}
 
-        {/* Input row */}
-        <div style={{ display: "flex", gap: "12px" }}>
+        <section className="chat-card">
+          <div className="chat-scroll">
+            {chatHistory.map((msg, index) => (
+              <div
+                key={index}
+                className={
+                  msg.role === "user" ? "message-row user-row" : "message-row bot-row"
+                }
+              >
+                <div
+                  className={
+                    msg.role === "user"
+                      ? "message-bubble user-bubble"
+                      : "message-bubble bot-bubble"
+                  }
+                >
+                  {msg.type !== "image" && (
+                    <>
+                      <strong>{msg.role === "user" ? "You" : "Glow Up Bot"}:</strong>{" "}
+                      <span>{msg.content}</span>
+                    </>
+                  )}
+
+                  {msg.type === "image" && (
+                    <div className="image-message">
+                      <strong>Glow Up Bot:</strong>
+                      <p className="image-message-copy">{msg.content}</p>
+                      <img
+                        src={msg.imageSrc}
+                        alt="Generated beauty inspiration"
+                        className="generated-image"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {(loading || analyzingFace) && (
+              <div className="thinking-pill">Glow Up Bot is thinking...</div>
+            )}
+          </div>
+        </section>
+
+        <section className="composer-card">
           <input
             type="text"
             value={message}
@@ -432,36 +491,58 @@ ${
             onKeyDown={(e) => {
               if (e.key === "Enter") sendMessage();
             }}
-            placeholder="Ask for a makeup look, hairstyle, skincare routine, or outfit idea..."
-            style={{
-              flex: 1,
-              padding: "16px",
-              borderRadius: "14px",
-              border: "1px solid rgba(255,255,255,0.2)",
-              backgroundColor: "rgba(255,255,255,0.08)",
-              color: "white",
-              fontSize: "1rem",
-              outline: "none",
-            }}
+            placeholder="Ask for makeup looks, hairstyles, outfit ideas, skincare, or generate an inspo image..."
+            className="composer-input"
           />
+
           <button
             onClick={sendMessage}
             disabled={loading}
-            style={{
-              padding: "16px 22px",
-              borderRadius: "14px",
-              border: "none",
-              backgroundColor: "#ff4fd8",
-              color: "white",
-              fontWeight: "bold",
-              cursor: "pointer",
-              fontSize: "1rem",
-            }}
+            className="primary-btn composer-send"
           >
             Send
           </button>
-        </div>
+        </section>
       </div>
+
+      {cameraOpen && (
+        <div className="camera-modal">
+          <div className="camera-panel">
+            <div className="camera-top">
+              <div>
+                <h3 className="camera-title">Live Camera Analysis</h3>
+                <p className="camera-copy">
+                  Center your face in the frame, then take a photo.
+                </p>
+              </div>
+
+              <button onClick={closeCamera} className="icon-close-btn">
+                ✕
+              </button>
+            </div>
+
+            {cameraError && <p className="camera-error">{cameraError}</p>}
+
+            <div className="video-wrap">
+              <video ref={videoRef} autoPlay playsInline muted className="camera-video" />
+              {!cameraReady && !cameraError && (
+                <div className="video-overlay">Starting camera...</div>
+              )}
+            </div>
+
+            <div className="camera-btn-row">
+              <button onClick={capturePhoto} className="primary-btn">
+                Take Photo & Analyze
+              </button>
+              <button onClick={closeCamera} className="ghost-btn">
+                Cancel
+              </button>
+            </div>
+
+            <canvas ref={canvasRef} style={{ display: "none" }} />
+          </div>
+        </div>
+      )}
     </main>
   );
 }
