@@ -1,202 +1,7 @@
-// "use client";
-
-// import { useState } from "react";
-
-// export default function Home() {
-//   const [message, setMessage] = useState("");
-//   const [chatHistory, setChatHistory] = useState([
-//     {
-//       role: "assistant",
-//       content:
-//         "Heyy, I’m Glow Up Bot 💄 Ask me about makeup, hairstyles, skincare, or outfit ideas.",
-//     },
-//   ]);
-//   const [loading, setLoading] = useState(false);
-
-// async function sendMessage() {
-//   if (!message.trim()) return;
-
-//   const updatedHistory = [...chatHistory, { role: "user", content: message }];
-//   setChatHistory(updatedHistory);
-//   setLoading(true);
-
-//   try {
-//     const response = await fetch(process.env.NEXT_PUBLIC_API_URL + "/chat", {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//       body: JSON.stringify({
-//         message: message,
-//         messages: updatedHistory,
-//         profile: {},
-//       }),
-//     });
-
-//     const data = await response.json();
-
-//     if (!response.ok) {
-//       throw new Error(data.detail || "Request failed");a
-//     }
-
-//     setChatHistory([
-//       ...updatedHistory,
-//       {
-//         role: "assistant",
-//         content: data.reply || "No response came back from the bot.",
-//       },
-//     ]);
-
-//     setMessage("");
-//   } catch (error) {
-//     console.error("FRONTEND CHAT ERROR:", error);
-
-//     setChatHistory([
-//       ...updatedHistory,
-//       {
-//         role: "assistant",
-//         content: error.message || "Something went wrong connecting to the backend.",
-//       },
-//     ]);
-//   } finally {
-//     setLoading(false);
-//   }
-// }
-
-//   return (
-//     <main
-//       style={{
-//         minHeight: "100vh",
-//         background: "linear-gradient(to bottom, #1a1a1a, #2d0b45)",
-//         color: "white",
-//         padding: "40px 20px",
-//         fontFamily: "Arial, sans-serif",
-//       }}
-//     >
-//       <div
-//         style={{
-//           maxWidth: "900px",
-//           margin: "0 auto",
-//         }}
-//       >
-//         <h1
-//           style={{
-//             fontSize: "3rem",
-//             fontWeight: "bold",
-//             marginBottom: "10px",
-//             textAlign: "center",
-//           }}
-//         >
-//           Glow Up Bot 💄
-//         </h1>
-
-//         <p
-//           style={{
-//             textAlign: "center",
-//             color: "#f3d9ff",
-//             marginBottom: "30px",
-//             fontSize: "1.1rem",
-//           }}
-//         >
-//           Your beauty, fashion, skincare, and style assistant
-//         </p>
-
-//         <div
-//           style={{
-//             backgroundColor: "rgba(255,255,255,0.08)",
-//             border: "1px solid rgba(255,255,255,0.15)",
-//             borderRadius: "20px",
-//             padding: "20px",
-//             minHeight: "450px",
-//             marginBottom: "20px",
-//             boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
-//           }}
-//         >
-//           {chatHistory.map((msg, index) => (
-//             <div
-//               key={index}
-//               style={{
-//                 display: "flex",
-//                 justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-//                 marginBottom: "16px",
-//               }}
-//             >
-//               <div
-//                 style={{
-//                   maxWidth: "75%",
-//                   padding: "12px 16px",
-//                   borderRadius: "16px",
-//                   backgroundColor:
-//                     msg.role === "user" ? "#d946ef" : "rgba(255,255,255,0.12)",
-//                   color: "white",
-//                   lineHeight: "1.5",
-//                 }}
-//               >
-//                 <strong>{msg.role === "user" ? "You" : "Glow Up Bot"}:</strong>{" "}
-//                 {msg.content}
-//               </div>
-//             </div>
-//           ))}
-
-//           {loading && (
-//             <p style={{ color: "#ffd6f7", marginTop: "10px" }}>
-//               Glow Up Bot is thinking...
-//             </p>
-//           )}
-//         </div>
-
-//         <div
-//           style={{
-//             display: "flex",
-//             gap: "12px",
-//           }}
-//         >
-//           <input
-//             type="text"
-//             value={message}
-//             onChange={(e) => setMessage(e.target.value)}
-//             onKeyDown={(e) => {
-//               if (e.key === "Enter") sendMessage();
-//             }}
-//             placeholder="Ask for a makeup look, hairstyle, skincare routine, or outfit idea..."
-//             style={{
-//               flex: 1,
-//               padding: "16px",
-//               borderRadius: "14px",
-//               border: "1px solid rgba(255,255,255,0.2)",
-//               backgroundColor: "rgba(255,255,255,0.08)",
-//               color: "white",
-//               fontSize: "1rem",
-//               outline: "none",
-//             }}
-//           />
-
-//           <button
-//             onClick={sendMessage}
-//             disabled={loading}
-//             style={{
-//               padding: "16px 22px",
-//               borderRadius: "14px",
-//               border: "none",
-//               backgroundColor: "#ff4fd8",
-//               color: "white",
-//               fontWeight: "bold",
-//               cursor: "pointer",
-//               fontSize: "1rem",
-//             }}
-//           >
-//             Send
-//           </button>
-//         </div>
-//       </div>
-//     </main>
-//   );
-// }
-
 "use client";
- 
-import { useState, useEffect } from "react";
- 
+
+import { useState, useEffect, useRef } from "react";
+
 // ── Default profile shape ──────────────────────────────────────────────────
 const DEFAULT_PROFILE = {
   name: "",
@@ -210,92 +15,19 @@ const DEFAULT_PROFILE = {
   budget: "",
   notes: [],
 };
- 
-export default function Home() {
-  const [message, setMessage] = useState("");
-  const [chatHistory, setChatHistory] = useState([
-    {
-      role: "assistant",
-      content:
-        "Heyy, I'm Glow Up Bot 💄 Ask me about makeup, hairstyles, skincare, or outfit ideas.",
-    },
-  ]);
-  const [loading, setLoading] = useState(false);
- 
-  // ── Profile state ──────────────────────────────────────────────────────────
-  const [profile, setProfileState] = useState(DEFAULT_PROFILE);
-  const [showProfile, setShowProfile] = useState(false);
- 
-  // Load profile from localStorage on first render
-  useEffect(() => {
-    const saved = localStorage.getItem("glowup_profile");
-    if (saved) {
-      try {
-        setProfileState(JSON.parse(saved));
-      } catch (_) {}
-    }
-  }, []);
- 
-  // Save profile to localStorage whenever it changes
-  const setProfile = (newProfile) => {
-    setProfileState(newProfile);
-    localStorage.setItem("glowup_profile", JSON.stringify(newProfile));
-  };
- 
-  // ── Send message ───────────────────────────────────────────────────────────
-  async function sendMessage() {
-    if (!message.trim()) return;
- 
-    const updatedHistory = [...chatHistory, { role: "user", content: message }];
-    setChatHistory(updatedHistory);
-    setLoading(true);
- 
-    try {
-      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + "/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: message,
-          messages: updatedHistory,
-          profile: profile,         // ← send saved profile every time
-        }),
-      });
- 
-      const data = await response.json();
- 
-      if (!response.ok) throw new Error(data.detail || "Request failed");
- 
-      // Save the updated profile the backend returns
-      if (data.profile) setProfile(data.profile);
- 
-      setChatHistory([
-        ...updatedHistory,
-        {
-          role: "assistant",
-          content: data.reply || "No response came back from the bot.",
-        },
-      ]);
- 
-      setMessage("");
-    } catch (error) {
-      console.error("FRONTEND CHAT ERROR:", error);
-      setChatHistory([
-        ...updatedHistory,
-        {
-          role: "assistant",
-          content:
-            error.message || "Something went wrong connecting to the backend.",
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  }
- 
-  // ── Profile form field helper ──────────────────────────────────────────────
-  const Field = ({ label, field, placeholder }) => (
+
+
+function Field({ label, field, placeholder, profile, setProfile }) {
+  return (
     <div style={{ marginBottom: "10px" }}>
-      <label style={{ fontSize: "0.8rem", color: "#f3d9ff", display: "block", marginBottom: "4px" }}>
+      <label
+        style={{
+          fontSize: "0.8rem",
+          color: "#f3d9ff",
+          display: "block",
+          marginBottom: "4px",
+        }}
+      >
         {label}
       </label>
       <input
@@ -312,12 +44,183 @@ export default function Home() {
           color: "white",
           fontSize: "0.9rem",
           boxSizing: "border-box",
+          outline: "none",
         }}
       />
     </div>
   );
- 
-  // ── Render ─────────────────────────────────────────────────────────────────
+}
+
+export default function Home() {
+  const [message, setMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState([
+    {
+      role: "assistant",
+      content:
+        "Heyy, I'm Glow Up Bot 💄 Ask me about makeup, hairstyles, skincare, or outfit ideas.",
+    },
+  ]);
+  const [loading, setLoading] = useState(false);
+
+  // ── Profile state ───────────────────────────────────────────────────────
+  const [profile, setProfileState] = useState(DEFAULT_PROFILE);
+  const [showProfile, setShowProfile] = useState(false);
+
+  // ── Camera / selfie analysis state ──────────────────────────────────────
+  const [analyzingFace, setAnalyzingFace] = useState(false);
+  const fileInputRef = useRef(null);
+
+  // Load profile from localStorage on first render
+  useEffect(() => {
+    const saved = localStorage.getItem("glowup_profile");
+    if (saved) {
+      try {
+        setProfileState(JSON.parse(saved));
+      } catch (_) {}
+    }
+  }, []);
+
+  // Save profile to localStorage whenever it changes
+  const setProfile = (newProfile) => {
+    setProfileState(newProfile);
+    localStorage.setItem("glowup_profile", JSON.stringify(newProfile));
+  };
+
+  // ── Send message ────────────────────────────────────────────────────────
+  async function sendMessage() {
+    if (!message.trim()) return;
+
+    const updatedHistory = [...chatHistory, { role: "user", content: message }];
+    setChatHistory(updatedHistory);
+    setLoading(true);
+
+    try {
+      const response = await fetch(process.env.NEXT_PUBLIC_API_URL + "/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: message,
+          messages: updatedHistory,
+          profile: profile,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.detail || "Request failed");
+
+      if (data.profile) setProfile(data.profile);
+
+      setChatHistory([
+        ...updatedHistory,
+        {
+          role: "assistant",
+          content: data.reply || "No response came back from the bot.",
+        },
+      ]);
+
+      setMessage("");
+    } catch (error) {
+      console.error("FRONTEND CHAT ERROR:", error);
+      setChatHistory([
+        ...updatedHistory,
+        {
+          role: "assistant",
+          content:
+            error.message || "Something went wrong connecting to the backend.",
+        },
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Face analysis from selfie / camera ──────────────────────────────────
+  async function handleFaceUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setAnalyzingFace(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append(
+        "extra_context",
+        "Please estimate face shape, skin tone, undertone, and suggest flattering hairstyles."
+      );
+      formData.append("profile", JSON.stringify(profile));
+
+      const response = await fetch(
+        process.env.NEXT_PUBLIC_API_URL + "/analyze-face",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.detail || "Face analysis failed");
+
+      if (data.profile) {
+        setProfile(data.profile);
+      }
+
+      const analysis = data.analysis || {};
+
+      const prettyReply = `
+Here’s your selfie analysis ✨
+
+Estimated face shape: ${analysis.face_shape || "Not detected"}
+Estimated skin tone: ${analysis.skin_tone || "Not detected"}
+Estimated undertone: ${analysis.undertone || "Not detected"}
+
+Confidence note: ${analysis.confidence_note || "No confidence note provided."}
+
+Best hairstyle directions:
+${
+  Array.isArray(analysis.hairstyle_directions) && analysis.hairstyle_directions.length
+    ? analysis.hairstyle_directions.map((item) => `• ${item}`).join("\n")
+    : "• No hairstyle suggestions returned"
+}
+
+Suggested makeup look: ${analysis.makeup_look || "No makeup look returned"}
+
+Blush placement: ${analysis.blush_placement || "Not provided"}
+Contour/Bronzer: ${analysis.contour_bronzer || "Not provided"}
+
+Lip shades:
+${
+  Array.isArray(analysis.lip_shades) && analysis.lip_shades.length
+    ? analysis.lip_shades.map((item) => `• ${item}`).join("\n")
+    : "• No lip shades returned"
+}
+      `.trim();
+
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: prettyReply,
+        },
+      ]);
+    } catch (error) {
+      console.error("FACE ANALYSIS ERROR:", error);
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            error.message || "Something went wrong analyzing your selfie.",
+        },
+      ]);
+    } finally {
+      setAnalyzingFace(false);
+      event.target.value = "";
+    }
+  }
+
   return (
     <main
       style={{
@@ -329,15 +232,28 @@ export default function Home() {
       }}
     >
       <div style={{ maxWidth: "900px", margin: "0 auto" }}>
- 
         {/* Header */}
-        <h1 style={{ fontSize: "3rem", fontWeight: "bold", marginBottom: "10px", textAlign: "center" }}>
+        <h1
+          style={{
+            fontSize: "3rem",
+            fontWeight: "bold",
+            marginBottom: "10px",
+            textAlign: "center",
+          }}
+        >
           Glow Up Bot 💄
         </h1>
-        <p style={{ textAlign: "center", color: "#f3d9ff", marginBottom: "20px", fontSize: "1.1rem" }}>
+        <p
+          style={{
+            textAlign: "center",
+            color: "#f3d9ff",
+            marginBottom: "20px",
+            fontSize: "1.1rem",
+          }}
+        >
           Your beauty, fashion, skincare, and style assistant
         </p>
- 
+
         {/* Profile toggle button */}
         <div style={{ textAlign: "center", marginBottom: "20px" }}>
           <button
@@ -356,7 +272,7 @@ export default function Home() {
             {showProfile ? "Hide Profile ▲" : "My Profile ✨"}
           </button>
         </div>
- 
+
         {/* Profile panel */}
         {showProfile && (
           <div
@@ -374,16 +290,93 @@ export default function Home() {
             <p style={{ fontSize: "0.82rem", color: "#c9a0dc", marginBottom: "16px" }}>
               Fill this in so Glow Up Bot gives you the most personalized advice. It saves automatically.
             </p>
- 
-            <Field label="Your Name" field="name" placeholder="e.g. Maya" />
-            <Field label="Skin Tone" field="skin_tone" placeholder="e.g. light, medium, deep" />
-            <Field label="Undertone" field="undertone" placeholder="e.g. warm, cool, neutral" />
-            <Field label="Face Shape" field="face_shape" placeholder="e.g. oval, round, square" />
-            <Field label="Hair Texture" field="hair_texture" placeholder="e.g. 4c coils, fine straight, wavy" />
-            <Field label="Budget" field="budget" placeholder="e.g. drugstore, mid-range, luxury" />
+
+            <Field
+              label="Your Name"
+              field="name"
+              placeholder="e.g. Maya"
+              profile={profile}
+              setProfile={setProfile}
+            />
+            <Field
+              label="Skin Tone"
+              field="skin_tone"
+              placeholder="e.g. light, medium, deep"
+              profile={profile}
+              setProfile={setProfile}
+            />
+            <Field
+              label="Undertone"
+              field="undertone"
+              placeholder="e.g. warm, cool, neutral"
+              profile={profile}
+              setProfile={setProfile}
+            />
+            <Field
+              label="Face Shape"
+              field="face_shape"
+              placeholder="e.g. oval, round, square"
+              profile={profile}
+              setProfile={setProfile}
+            />
+            <Field
+              label="Hair Texture"
+              field="hair_texture"
+              placeholder="e.g. 4c coils, fine straight, wavy"
+              profile={profile}
+              setProfile={setProfile}
+            />
+            <Field
+              label="Budget"
+              field="budget"
+              placeholder="e.g. drugstore, mid-range, luxury"
+              profile={profile}
+              setProfile={setProfile}
+            />
+
+            {/* Selfie / camera button */}
+            <div style={{ marginTop: "18px" }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="user"
+                onChange={handleFaceUpload}
+                style={{ display: "none" }}
+              />
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={analyzingFace}
+                style={{
+                  padding: "12px 18px",
+                  borderRadius: "12px",
+                  border: "none",
+                  backgroundColor: "#ff4fd8",
+                  color: "white",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  fontSize: "0.95rem",
+                }}
+              >
+                {analyzingFace ? "Analyzing Selfie..." : "Use Camera / Upload Selfie 📸"}
+              </button>
+
+              <p
+                style={{
+                  fontSize: "0.8rem",
+                  color: "#c9a0dc",
+                  marginTop: "10px",
+                  lineHeight: "1.4",
+                }}
+              >
+                Upload a selfie or use your camera so Glow Up Bot can estimate your face shape,
+                skin tone, and undertone, then suggest flattering hairstyles.
+              </p>
+            </div>
           </div>
         )}
- 
+
         {/* Chat window */}
         <div
           style={{
@@ -414,6 +407,7 @@ export default function Home() {
                     msg.role === "user" ? "#d946ef" : "rgba(255,255,255,0.12)",
                   color: "white",
                   lineHeight: "1.5",
+                  whiteSpace: "pre-wrap",
                 }}
               >
                 <strong>{msg.role === "user" ? "You" : "Glow Up Bot"}:</strong>{" "}
@@ -421,21 +415,23 @@ export default function Home() {
               </div>
             </div>
           ))}
- 
-          {loading && (
+
+          {(loading || analyzingFace) && (
             <p style={{ color: "#ffd6f7", marginTop: "10px" }}>
               Glow Up Bot is thinking...
             </p>
           )}
         </div>
- 
+
         {/* Input row */}
         <div style={{ display: "flex", gap: "12px" }}>
           <input
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") sendMessage(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") sendMessage();
+            }}
             placeholder="Ask for a makeup look, hairstyle, skincare routine, or outfit idea..."
             style={{
               flex: 1,
@@ -465,9 +461,7 @@ export default function Home() {
             Send
           </button>
         </div>
- 
       </div>
     </main>
   );
 }
- 
