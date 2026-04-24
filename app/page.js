@@ -58,7 +58,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
 
   const [profile, setProfileState] = useState(DEFAULT_PROFILE);
-  const [showProfile, setShowProfile] = useState(false);
+  const [showProfile, setShowProfile] = useState(true);
 
   const [analyzingFace, setAnalyzingFace] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -343,7 +343,13 @@ ${
       <div className="bg-orb orb-1" />
       <div className="bg-orb orb-2" />
 
-      <div className="app-wrap">
+      <div className="layout-wrap">
+        {showProfile && (
+          <aside className="sidebar">
+            </aside>
+  )}
+
+  <div className="main-content"></div>
         <header className="hero-card">
           <div className="hero-top">
             <div>
@@ -510,7 +516,8 @@ ${
             Send
           </button>
         </section>
-      </div>
+          </div>
+        </div>
 
       {cameraOpen && (
         <div className="camera-modal">
