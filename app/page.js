@@ -173,6 +173,7 @@ Here’s your selfie analysis ✨
 Estimated face shape: ${analysis.face_shape || "Not detected"}
 Estimated skin tone: ${analysis.skin_tone || "Not detected"}
 Estimated undertone: ${analysis.undertone || "Not detected"}
+Estimated hair texture/style: ${analysis.hair_texture || "Not detected"}
 
 Confidence note: ${analysis.confidence_note || "No confidence note provided."}
 
