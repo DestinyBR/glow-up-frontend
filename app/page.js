@@ -516,8 +516,8 @@ ${
             Send
           </button>
         </section>
+            </div>
           </div>
-        </div>
 
       {cameraOpen && (
         <div className="camera-modal">

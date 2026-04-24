@@ -409,4 +409,46 @@ img {
   .camera-panel {
     padding: 16px;
   }
+
+  .layout-wrap {
+  display: grid;
+  grid-template-columns: 330px 1fr;
+  gap: 24px;
+  max-width: 1450px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+.sidebar {
+  position: sticky;
+  top: 24px;
+  height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.main-content {
+  min-width: 0;
+}
+
+.sidebar .panel-card {
+  height: 100%;
+  margin-bottom: 0;
+}
+
+.sidebar .profile-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 900px) {
+  .layout-wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: relative;
+    height: auto;
+    top: 0;
+  }
+}
 }
