@@ -144,7 +144,13 @@ export default function Home() {
         "extra_context",
         "Please estimate face shape, skin tone, undertone, and suggest flattering hairstyles."
       );
-      formData.append("profile", JSON.stringify(profile));
+      formData.append("profile", JSON.stringify({
+        ...profile,
+        skin_tone: "",
+        undertone: "",
+        face_shape: "",
+        hair_texture: "",
+      }));
 
       const response = await fetch(
         process.env.NEXT_PUBLIC_API_URL + "/analyze-face",
