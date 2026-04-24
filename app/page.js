@@ -517,7 +517,7 @@ ${
           </button>
         </section>
             </div>
-          </div>
+          
 
       {cameraOpen && (
         <div className="camera-modal">
