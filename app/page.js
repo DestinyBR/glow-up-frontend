@@ -353,6 +353,7 @@ ${
           <aside className="sidebar">
           </aside>
   )}
+  </div>
 
   <div className="main-content"></div>
         <header className="hero-card">
