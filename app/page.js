@@ -271,6 +271,11 @@ ${
     }
   }
 
+  function sendQuick(text) {
+  setMessage(text);
+  setTimeout(() => sendMessage(), 100);
+}
+
   async function sendMessage() {
     if (!message.trim()) return;
 
@@ -346,7 +351,7 @@ ${
       <div className="layout-wrap">
         {showProfile && (
           <aside className="sidebar">
-            </aside>
+          </aside>
   )}
 
   <div className="main-content"></div>
@@ -496,6 +501,24 @@ ${
           </div>
         </section>
 
+        <section className="quick-actions">
+          <button onClick={() => sendQuick("Give me the best hairstyles for my face shape and hair texture")}>
+            💇🏽 Best Hairstyles
+          </button>
+
+          <button onClick={() => sendQuick("What colors look best on me based on my skin tone and undertone")}>
+            🎨 Best Colors
+          </button>
+
+          <button onClick={() => sendQuick("Suggest a makeup look for my face shape, skin tone, and undertone")}>
+            💄 Makeup Match
+          </button>
+
+          <button onClick={() => sendQuick("Recommend culturally relevant beauty and hair products for my skin tone and hair type")}>
+            🛍 Product Suggestions
+          </button>
+        </section>
+
         <section className="composer-card">
           <input
             type="text"
@@ -516,9 +539,9 @@ ${
             Send
           </button>
         </section>
-            </div>
+            <div>
+          </div>
           
-
       {cameraOpen && (
         <div className="camera-modal">
           <div className="camera-panel">

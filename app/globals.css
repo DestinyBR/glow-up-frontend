@@ -451,4 +451,24 @@ img {
     top: 0;
   }
 }
+.quick-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.quick-actions button {
+  background: linear-gradient(135deg, #ff4fd8, #d946ef);
+  border: none;
+  border-radius: 14px;
+  padding: 12px 16px;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.quick-actions button:hover {
+  transform: translateY(-1px);
+}
 }
