@@ -17,14 +17,24 @@ const DEFAULT_PROFILE = {
 
 const MAX_ANALYSIS_HISTORY = 3;
 
+// Treat these as "no value detected"
+const UNCERTAIN_STR = ["uncertain", "not clearly visible", "not detected", ""];
+const isUncertain = (v) =>
+  !v || UNCERTAIN_STR.includes(String(v).toLowerCase().trim());
+
+// Fields we will auto-fill from selfie analysis whenever the model commits
+// to a non-uncertain value. This bypasses the backend's confidence gate so
+// that face_shape, hair_texture, etc. always make it into the profile.
+const AUTO_FILL_FIELDS = ["face_shape", "hair_texture", "skin_tone", "undertone"];
+
 // ── Photo step definitions ──────────────────────────────────────────────────
 const PHOTO_STEPS = [
   {
     step: 1,
     label: "Baseline",
     buttonLabel: "Take Baseline Photo",
-    title: "Photo 1 — Straight On",
-    description: "Face the camera directly. Pull hair away from your jawline and forehead. Neutral expression — no smile.",
+    title: "Photo 1: Straight On",
+    description: "Face the camera directly. Pull hair away from your jawline and forehead. Neutral expression. No smile.",
     purpose: "Face shape + skin tone baseline",
     icon: "baseline",
     tips: ["Eyes level with camera", "Hair back from face", "Neutral expression", "Even light on both cheeks"],
@@ -33,17 +43,17 @@ const PHOTO_STEPS = [
     step: 2,
     label: "Side Angle",
     buttonLabel: "Take Side Angle Photo",
-    title: "Photo 2 — Natural Light Angle",
-    description: "Turn your head 15–20° to one side. Sit near a window — natural daylight gives the most accurate undertone read.",
+    title: "Photo 2: Natural Light Angle",
+    description: "Turn your head 15–20° to one side. Sit near a window, natural daylight gives the most accurate undertone read.",
     purpose: "Undertone + jaw shape confirmation",
     icon: "angle",
-    tips: ["Near a window if possible", "No flash", "Slight turn — not full profile", "Daylight best for undertone"],
+    tips: ["Near a window if possible", "No flash", "Slight turn, not full profile", "Daylight best for undertone"],
   },
   {
     step: 3,
     label: "Hair",
     buttonLabel: "Take Hair Photo",
-    title: "Photo 3 — Hair Visible",
+    title: "Photo 3: Hair Visible",
     description: "Hair down or styled as you normally wear it. Show your full hairline. This is how braids, locs, and twists get correctly identified.",
     purpose: "Hair texture + protective style detection",
     icon: "hair",
@@ -155,6 +165,8 @@ function PoseIllustration({ icon }) {
 }
 
 // ── Field component ───────────────────────────────────────────────────────────
+// data-profile-field lets the voice handler know which field is currently
+// focused so dictation can write into the right slot of profile state.
 function Field({ label, field, placeholder, profile, setProfile }) {
   return (
     <div className="field-wrap">
@@ -162,6 +174,7 @@ function Field({ label, field, placeholder, profile, setProfile }) {
       <input
         className="field-input"
         type="text"
+        data-profile-field={field}
         value={profile[field] || ""}
         placeholder={placeholder}
         onChange={(e) => setProfile({ ...profile, [field]: e.target.value })}
@@ -200,6 +213,18 @@ function ConfidenceBadge({ score }) {
   );
 }
 
+// ── Mic icon (small inline SVG, no extra deps) ───────────────────────────────
+function MicIcon({ active = false }) {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+      <rect x="9" y="3" width="6" height="11" rx="3" fill={active ? "#fff" : "#fff"}/>
+      <path d="M5 11a7 7 0 0 0 14 0" stroke="#fff" strokeWidth="2" strokeLinecap="round" fill="none"/>
+      <line x1="12" y1="18" x2="12" y2="22" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+      <line x1="9" y1="22" x2="15" y2="22" stroke="#fff" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function Home() {
   const [message,      setMessage]      = useState("");
@@ -221,6 +246,11 @@ export default function Home() {
   const [photosTaken,      setPhotosTaken]      = useState(0);
   const [brightness,       setBrightness]       = useState(null);
 
+  // Voice input state
+  const [voiceSupported, setVoiceSupported] = useState(true);
+  const [listening,      setListening]      = useState(false);
+  const [voiceNotice,    setVoiceNotice]    = useState("");
+
   const videoRef           = useRef(null);
   const canvasRef          = useRef(null);
   const brightnessCanvas   = useRef(null);
@@ -228,6 +258,12 @@ export default function Home() {
   const composerRef        = useRef(null);
   const inputRef           = useRef(null);
   const brightnessRafRef   = useRef(null);
+  const recognitionRef     = useRef(null);
+  const lastFocusedRef     = useRef(null);
+  const profileRef         = useRef(profile);
+
+  // Keep a live ref to profile so the speech callback can read latest state
+  useEffect(() => { profileRef.current = profile; }, [profile]);
 
   // ── Persistence ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -244,16 +280,137 @@ export default function Home() {
 
   const setProfile = (p) => {
     setProfileState(p);
-    localStorage.setItem("glowup_profile", JSON.stringify(p));
+    profileRef.current = p;
+    try { localStorage.setItem("glowup_profile", JSON.stringify(p)); } catch (_) {}
   };
 
   const saveAnalysisHistory = (h) => {
     setAnalysisHistory(h);
     setPhotosTaken(h.length);
-    localStorage.setItem("glowup_analysis_history", JSON.stringify(h));
+    try { localStorage.setItem("glowup_analysis_history", JSON.stringify(h)); } catch (_) {}
   };
 
   const resetAnalysisHistory = () => { saveAnalysisHistory([]); setCurrentPhotoStep(0); };
+
+  // ── Voice input setup ──────────────────────────────────────────────────
+  // Detect browser support for SpeechRecognition (Chrome/Edge have it)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    setVoiceSupported(!!SR);
+  }, []);
+
+  // Track which input the user last focused so dictation knows where to type
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const handler = (e) => {
+      const el = e.target;
+      if (!el || !el.matches) return;
+      if (
+        el.matches('input[type="text"]') ||
+        el.matches("textarea") ||
+        el.classList.contains("composer-input") ||
+        el.classList.contains("field-input")
+      ) {
+        lastFocusedRef.current = el;
+      }
+    };
+    document.addEventListener("focusin", handler);
+    return () => document.removeEventListener("focusin", handler);
+  }, []);
+
+  function appendToFocused(text) {
+    if (!text) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const el = lastFocusedRef.current;
+
+    // Composer / no focused field → write to chat input
+    if (!el || el === inputRef.current || el.classList?.contains("composer-input")) {
+      setMessage((prev) => (prev ? prev + " " : "") + trimmed);
+      inputRef.current?.focus();
+      return;
+    }
+
+    // Profile field → update React state for that field
+    const field = el.dataset?.profileField;
+    if (field && Object.prototype.hasOwnProperty.call(DEFAULT_PROFILE, field)) {
+      const cur = profileRef.current || DEFAULT_PROFILE;
+      const existing = String(cur[field] ?? "").trim();
+      const merged = (existing ? existing + " " : "") + trimmed;
+      setProfile({ ...cur, [field]: merged });
+      // Re-focus so user can keep typing/dictating into the same field
+      requestAnimationFrame(() => el.focus());
+      return;
+    }
+
+    // Fallback: just send to composer
+    setMessage((prev) => (prev ? prev + " " : "") + trimmed);
+    inputRef.current?.focus();
+  }
+
+  function showVoiceNotice(msg) {
+    setVoiceNotice(msg);
+    setTimeout(() => setVoiceNotice(""), 4000);
+  }
+
+  function toggleVoice() {
+    if (typeof window === "undefined") return;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      showVoiceNotice("Voice input isn't supported in this browser. Try Chrome or Edge.");
+      return;
+    }
+
+    // Already listening → stop
+    if (listening && recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch (_) {}
+      return;
+    }
+
+    const rec = new SR();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = "en-US";
+    rec.maxAlternatives = 1;
+
+    rec.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((r) => r[0]?.transcript || "")
+        .join(" ")
+        .trim();
+      if (transcript) appendToFocused(transcript);
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = (event) => {
+      setListening(false);
+      const code = event?.error || "unknown";
+      if (code === "not-allowed" || code === "service-not-allowed") {
+        showVoiceNotice("Microphone permission was denied. Allow mic access in your browser settings.");
+      } else if (code === "no-speech") {
+        showVoiceNotice("Didn't catch that — try speaking a bit louder.");
+      } else if (code === "audio-capture") {
+        showVoiceNotice("No microphone detected on this device.");
+      }
+    };
+
+    recognitionRef.current = rec;
+    setListening(true);
+    try {
+      rec.start();
+    } catch (_) {
+      // Some browsers throw if start() is called too quickly after stop()
+      setListening(false);
+    }
+  }
+
+  // Stop any ongoing recognition when the component unmounts
+  useEffect(() => {
+    return () => {
+      try { recognitionRef.current?.stop(); } catch (_) {}
+    };
+  }, []);
 
   // ── Live brightness loop ────────────────────────────────────────────────
   const stopBrightnessLoop = useCallback(() => {
@@ -334,12 +491,34 @@ export default function Home() {
 
       const newHistory = data.analysis_history || [];
       saveAnalysisHistory(newHistory);
-      if (data.profile) setProfile(data.profile);
 
       const display        = data.stabilized || data.analysis || {};
       const raw            = data.analysis   || {};
       const nAnalyses      = newHistory.length;
       const confidenceScore = display.confidence_score ?? raw.confidence_score ?? 0;
+
+      // ── Always pull confident detections into the profile ─────────────
+      // The backend has a confidence gate that can prevent face_shape /
+      // hair_texture from saving. We override that here: if the model
+      // committed to a non-uncertain value (e.g. "braids", "oval"), we
+      // write it to the profile so the form fields stay in sync with
+      // what the bot just told the user.
+      const baseProfile = data.profile
+        ? { ...DEFAULT_PROFILE, ...data.profile }
+        : { ...(profileRef.current || DEFAULT_PROFILE) };
+
+      let mergedProfile = baseProfile;
+      const savedFields = [];
+      for (const f of AUTO_FILL_FIELDS) {
+        const candidate = String(display?.[f] ?? raw?.[f] ?? "").trim();
+        if (candidate && !isUncertain(candidate)) {
+          if (mergedProfile[f] !== candidate) {
+            mergedProfile = { ...mergedProfile, [f]: candidate };
+            savedFields.push(f);
+          }
+        }
+      }
+      setProfile(mergedProfile);
 
       const unc = (v) => !v || ["uncertain","not clearly visible","not detected"].includes(v?.toLowerCase());
       const fmt = (lbl, v) => unc(v) ? `${lbl}: uncertain` : `${lbl}: ${v}`;
@@ -347,9 +526,12 @@ export default function Home() {
       const stabilizationNote = nAnalyses < MAX_ANALYSIS_HISTORY
         ? `📸 Photo ${nAnalyses}/${MAX_ANALYSIS_HISTORY} complete — ${MAX_ANALYSIS_HISTORY - nAnalyses} more photo(s) will improve accuracy.`
         : `✅ All 3 photos analyzed — results are stabilized.`;
-      const profileNote = data.should_update_profile
-        ? "💾 Profile updated with these results."
-        : "⚠️ Confidence too low to update profile automatically.";
+
+      const profileNote = savedFields.length
+        ? `💾 Saved to your profile: ${savedFields.map((f) => f.replace("_", " ")).join(", ")}.`
+        : (data.should_update_profile
+            ? "💾 Profile updated with these results."
+            : "⚠️ Nothing confident enough to save to your profile this round.");
 
       const nudge = buildNudgeMessage(display, nAnalyses);
 
@@ -462,6 +644,15 @@ ${Array.isArray(display.lip_shades) && display.lip_shades.length
     : allDone
     ? "✅ All 3 photos complete"
     : `📸 ${photosTaken}/${MAX_ANALYSIS_HISTORY} photos`;
+
+  // Helpful hint above the mic button so user knows what it'll dictate into
+  const focusedFieldHint = (() => {
+    const el = lastFocusedRef.current;
+    if (!el) return "chat";
+    const f = el.dataset?.profileField;
+    if (f) return f.replace("_", " ");
+    return "chat";
+  })();
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -654,6 +845,18 @@ ${Array.isArray(display.lip_shades) && display.lip_shades.length
               </div>
             </section>
 
+            {/* Voice notice (errors / unsupported) */}
+            {voiceNotice && (
+              <div className="voice-notice">{voiceNotice}</div>
+            )}
+
+            {/* Listening hint */}
+            {listening && (
+              <div className="voice-listening-hint">
+                🎙️ Listening… speak now (will type into <strong>{focusedFieldHint}</strong>)
+              </div>
+            )}
+
             <section className="composer-card" ref={composerRef}>
               <input
                 ref={inputRef} type="text" value={message}
@@ -662,6 +865,26 @@ ${Array.isArray(display.lip_shades) && display.lip_shades.length
                 placeholder="Ask for makeup looks, hairstyles, outfit ideas, skincare, or generate an inspo image..."
                 className="composer-input"
               />
+
+              {/* Mic button — dictates into whatever field is focused */}
+              <button
+                type="button"
+                onClick={toggleVoice}
+                className={`mic-btn ${listening ? "mic-btn-listening" : ""}`}
+                aria-label={listening ? "Stop voice input" : "Start voice input"}
+                aria-pressed={listening}
+                title={
+                  !voiceSupported
+                    ? "Voice input not supported in this browser"
+                    : listening
+                    ? "Stop dictating"
+                    : "Tap to dictate into the focused field"
+                }
+                disabled={!voiceSupported}
+              >
+                <MicIcon active={listening}/>
+              </button>
+
               <button onClick={() => sendMessage()} disabled={loading} className="primary-btn composer-send">Send</button>
             </section>
           </section>
