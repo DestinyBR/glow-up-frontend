@@ -154,6 +154,8 @@ const [analysisComplete, setAnalysisComplete] = useState(false);
     }, 500);
 
     try {
+      console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+      console.log("Profile:", profile);
       const formData = new FormData();
       formData.append("file", blob, "selfie.jpg");
       formData.append(
