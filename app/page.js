@@ -387,50 +387,29 @@ ${
                 Your AI beauty, fashion, skincare, and style assistant.
               </p>
 
-              <div className="hero-actions">
-                <button
-                  onClick={() =>
-                    sendQuick(
-                      "Give me the best hairstyles for my face shape and hair texture"
-                    )
-                  }
-                >
+              <div className="feature-bar">
+                <button onClick={() => sendQuick("Give me the best hairstyles for my face shape and hair texture")}>
                   Best Hairstyles
                 </button>
 
-                <button
-                  onClick={() =>
-                    sendQuick(
-                      "What colors look best on me based on my skin tone and undertone"
-                    )
-                  }
-                >
+                <button onClick={() => sendQuick("What colors look best on me based on my skin tone and undertone")}>
                   Best Colors
                 </button>
 
-                <button
-                  onClick={() =>
-                    sendQuick(
-                      "Suggest a makeup look for my face shape, skin tone, and undertone"
-                    )
-                  }
-                >
+                <button onClick={() => sendQuick("Suggest a makeup look for my face shape, skin tone, and undertone")}>
                   Makeup Match
                 </button>
 
-                <button
-                  onClick={() =>
-                    sendQuick(
-                      "Recommend beauty and hair products for my skin tone and hair type"
-                    )
-                  }
-                >
+                <button onClick={() => sendQuick("Recommend culturally relevant beauty and hair products for my skin tone and hair type")}>
                   Product Suggestions
                 </button>
               </div>
             </div>
           </div>
         </header>
+          <div className="feature-bar">
+            ...buttons here...
+          </div>
 
         <div className="workspace-grid">
           <aside className="profile-sidebar">
