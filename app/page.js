@@ -390,12 +390,16 @@ ${
 
       <div className="app-wrap">
         <header className="hero-card">
-          <div className="hero-top">
-            <div>
+          <div className="hero-top hero-split">
+            <div className="hero-copy">
+              <p className="eyebrow">AI Beauty Assistant</p>
               <h1 className="hero-title">Glow Up Bot</h1>
               <p className="hero-subtitle">
-                Your AI beauty, fashion, skincare, and style assistant.
+                Personalized beauty, hair, skincare, and style guidance powered by your profile.
               </p>
+            </div>
+
+            <div className="hero-actions">
 
               <div className="feature-bar">
                 <button onClick={() => sendQuick("Give me the best hairstyles for my face shape and hair texture")}>
