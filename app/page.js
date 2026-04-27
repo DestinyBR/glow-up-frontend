@@ -349,13 +349,8 @@ ${
       <div className="bg-orb orb-2" />
 
       <div className="layout-wrap">
-        {showProfile && (
-          <aside className="sidebar">
-          </aside>
-  )}
-  </div>
-
-  <div className="main-content"></div>
+  {showProfile && (
+    <aside className="sidebar">
         <header className="hero-card">
           <div className="hero-top">
             <div>
@@ -374,7 +369,7 @@ ${
           </div>
         </header>
 
-        {showProfile && (
+        
           <section className="panel-card">
             <div className="panel-header">
               <div>
@@ -390,7 +385,7 @@ ${
               <Field
                 label="Your Name"
                 field="name"
-                placeholder="e.g. Maya"
+                placeholder="e.g. Destiny"
                 profile={profile}
                 setProfile={setProfile}
               />
@@ -452,11 +447,14 @@ ${
             </div>
 
             <p className="micro-copy">
-              Use your camera live or upload a selfie so Glow Up Bot can estimate
-              face shape, skin tone, undertone, and suggest flattering hairstyles.
-            </p>
-          </section>
-        )}
+  Use your camera live or upload a selfie so Glow Up Bot can estimate
+  face shape, skin tone, undertone, and suggest flattering hairstyles.
+</p>
+</section>
+</aside>
+)}
+
+<div className="main-content">
 
         <section className="chat-card">
           <div className="chat-scroll">
@@ -540,8 +538,8 @@ ${
             Send
           </button>
         </section>
-            <div>
-          </div>
+</div>
+</div>
           
       {cameraOpen && (
         <div className="camera-modal">
