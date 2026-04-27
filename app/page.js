@@ -67,6 +67,8 @@ export default function Home() {
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [cameraReady, setCameraReady] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+const [analysisComplete, setAnalysisComplete] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -141,6 +143,15 @@ export default function Home() {
 
   async function analyzeBlob(blob) {
     setAnalyzingFace(true);
+    setAnalysisComplete(false);
+    setAnalysisProgress(10);
+
+    const progressInterval = setInterval(() => {
+      setAnalysisProgress((prev) => {
+        if (prev >= 90) return prev;
+        return prev + 10;
+      });
+    }, 500);
 
     try {
       const formData = new FormData();
@@ -225,7 +236,15 @@ ${
         },
       ]);
     } finally {
-      setAnalyzingFace(false);
+      clearInterval(progressInterval);
+      setAnalysisProgress(100);
+      setAnalysisComplete(true);
+
+      setTimeout(() => {
+        setAnalyzingFace(false);
+        setAnalysisComplete(false);
+        setAnalysisProgress(0);
+      }, 900);
     }
   }
 
@@ -408,7 +427,6 @@ ${
           </div>
         </header>
           <div className="feature-bar">
-            ...buttons here...
           </div>
 
         <div className="workspace-grid">
@@ -541,8 +559,13 @@ ${
                 ))}
 
                 {(loading || analyzingFace) && (
-                  <div className="thinking-pill">
-                    Alright I gotchu! Let me think...
+                  <div className="typing-indicator">
+                    <span>Alright I gotchu! Let me think</span>
+                    <div className="typing-dots">
+                      <i></i>
+                      <i></i>
+                      <i></i>
+                    </div>
                   </div>
                 )}
               </div>
@@ -601,13 +624,30 @@ ${
                 className="camera-video"/>
                 
                 {analyzingFace && (
-                  <div className="analysis-overlay">
-                    <div className="analysis-box">
-                      <div className="spinner" />
-                      <p>Analyzing your face...</p>
+                    <div className="analysis-overlay">
+                      <div className="face-detection-box">
+                        <span className="corner top-left" />
+                        <span className="corner top-right" />
+                        <span className="corner bottom-left" />
+                        <span className="corner bottom-right" />
+                      </div>
+
+                      <div className="analysis-box">
+                        <p className="analysis-title">
+                          {analysisComplete ? "Analysis complete" : "Analyzing your face"}
+                        </p>
+
+                        <div className="progress-track">
+                          <div
+                            className="progress-fill"
+                            style={{ width: `${analysisProgress}%` }}
+                          />
+                        </div>
+
+                        <p className="analysis-percent">{analysisProgress}%</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
           
               {!cameraReady && !cameraError && (
                 <div className="video-overlay">Starting camera...</div>
