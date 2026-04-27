@@ -242,11 +242,16 @@ ${
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     canvas.toBlob(
-      async (blob) => {
-        if (!blob) return;
-        await analyzeBlob(blob);
-        closeCamera();
-      },
+  async (blob) => {
+    if (!blob) return;
+
+    setAnalyzingFace(true); // START LOADING
+
+    await analyzeBlob(blob);
+
+    setAnalyzingFace(false); // STOP LOADING
+    closeCamera();
+  },
       "image/jpeg",
       0.95
     );
@@ -609,12 +614,22 @@ ${
 
             <div className="video-wrap">
               <video
+              
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className="camera-video"
-              />
+                className="camera-video"/>
+                
+                {analyzingFace && (
+                  <div className="analysis-overlay">
+                    <div className="analysis-box">
+                      <div className="spinner" />
+                      <p>Analyzing your face...</p>
+                    </div>
+                  </div>
+                )}
+          
               {!cameraReady && !cameraError && (
                 <div className="video-overlay">Starting camera...</div>
               )}
