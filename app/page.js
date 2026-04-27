@@ -34,7 +34,11 @@ function isImageRequest(text) {
   const lower = text.toLowerCase();
   return (
     lower.includes("generate an image") ||
+    lower.includes("generate images") ||
     lower.includes("create an image") ||
+    lower.includes("create pictures") ||
+    lower.includes("create images") ||
+    lower.includes("give pictures") ||
     lower.includes("make an image") ||
     lower.includes("show me an image") ||
     lower.includes("visualize") ||
@@ -51,14 +55,13 @@ export default function Home() {
     {
       role: "assistant",
       content:
-        "Heyy, I'm Glow Up Bot 💄 Ask me about makeup, hairstyles, skincare, outfit ideas, or beauty inspo images.",
+        "Heyy, I'm Glow Up Bot! Ask me about makeup, hairstyles, skincare, outfit ideas, or beauty inspo images.",
       type: "text",
     },
   ]);
 
   const [loading, setLoading] = useState(false);
   const [profile, setProfileState] = useState(DEFAULT_PROFILE);
-  const [showProfile, setShowProfile] = useState(true);
 
   const [analyzingFace, setAnalyzingFace] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -68,6 +71,8 @@ export default function Home() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
+  const composerRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("glowup_profile");
@@ -277,7 +282,16 @@ ${
   }
 
   function sendQuick(text) {
-    sendMessage(text);
+    setMessage(text);
+
+    setTimeout(() => {
+      composerRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+      inputRef.current?.focus();
+    }, 100);
   }
 
   async function sendMessage(quickText = null) {
@@ -331,7 +345,7 @@ ${
 
         newMessages.push({
           role: "assistant",
-          content: "I made a beauty inspo image based on your request ✨",
+          content: "I made a beauty inspo image based on your request!",
           type: "image",
           imageSrc: `data:image/png;base64,${imageBase64}`,
         });
@@ -367,104 +381,137 @@ ${
               <p className="hero-subtitle">
                 Your AI beauty, fashion, skincare, and style assistant.
               </p>
-            </div>
 
-            <button
-              onClick={() => setShowProfile(!showProfile)}
-              className="primary-btn"
-            >
-              {showProfile ? "Hide Profile" : "Show Profile"}
-            </button>
+              <div className="hero-actions">
+                <button
+                  onClick={() =>
+                    sendQuick(
+                      "Give me the best hairstyles for my face shape and hair texture"
+                    )
+                  }
+                >
+                  Best Hairstyles
+                </button>
+
+                <button
+                  onClick={() =>
+                    sendQuick(
+                      "What colors look best on me based on my skin tone and undertone"
+                    )
+                  }
+                >
+                  Best Colors
+                </button>
+
+                <button
+                  onClick={() =>
+                    sendQuick(
+                      "Suggest a makeup look for my face shape, skin tone, and undertone"
+                    )
+                  }
+                >
+                  Makeup Match
+                </button>
+
+                <button
+                  onClick={() =>
+                    sendQuick(
+                      "Recommend beauty and hair products for my skin tone and hair type"
+                    )
+                  }
+                >
+                  Product Suggestions
+                </button>
+              </div>
+            </div>
           </div>
         </header>
 
-        <div className={showProfile ? "workspace-grid" : "workspace-grid full-width"}>
-          {showProfile && (
-            <aside className="profile-sidebar">
-              <section className="panel-card profile-card">
-                <div className="panel-header">
-                  <div>
-                    <h2 className="panel-title">Your Beauty Profile</h2>
-                    <p className="panel-copy">
-                      Fill this in so Glow Up Bot gives you more personalized
-                      advice. It saves automatically in your browser.
-                    </p>
-                  </div>
+        <div className="workspace-grid">
+          <aside className="profile-sidebar">
+            <section className="panel-card profile-card">
+              <div className="panel-header">
+                <div>
+                  <h2 className="panel-title">Your Beauty Profile</h2>
+                  <p className="panel-copy">
+                    Fill this in so Glow Up Bot gives you more personalized
+                    advice. It saves automatically in your browser.
+                  </p>
                 </div>
+              </div>
 
-                <div className="profile-grid">
-                  <Field
-                    label="Your Name"
-                    field="name"
-                    placeholder="e.g. Destiny"
-                    profile={profile}
-                    setProfile={setProfile}
-                  />
-                  <Field
-                    label="Skin Tone"
-                    field="skin_tone"
-                    placeholder="e.g. light, medium, deep"
-                    profile={profile}
-                    setProfile={setProfile}
-                  />
-                  <Field
-                    label="Undertone"
-                    field="undertone"
-                    placeholder="e.g. warm, cool, neutral"
-                    profile={profile}
-                    setProfile={setProfile}
-                  />
-                  <Field
-                    label="Face Shape"
-                    field="face_shape"
-                    placeholder="e.g. oval, round, square"
-                    profile={profile}
-                    setProfile={setProfile}
-                  />
-                  <Field
-                    label="Hair Texture"
-                    field="hair_texture"
-                    placeholder="e.g. 4c coils, fine straight, wavy"
-                    profile={profile}
-                    setProfile={setProfile}
-                  />
-                  <Field
-                    label="Budget"
-                    field="budget"
-                    placeholder="e.g. drugstore, mid-range, luxury"
-                    profile={profile}
-                    setProfile={setProfile}
-                  />
-                </div>
+              <div className="profile-grid">
+                <Field
+                  label="Your Name"
+                  field="name"
+                  placeholder="e.g. Destiny"
+                  profile={profile}
+                  setProfile={setProfile}
+                />
+                <Field
+                  label="Skin Tone"
+                  field="skin_tone"
+                  placeholder="e.g. light, medium, deep brown"
+                  profile={profile}
+                  setProfile={setProfile}
+                />
+                <Field
+                  label="Undertone"
+                  field="undertone"
+                  placeholder="e.g. warm, cool, neutral"
+                  profile={profile}
+                  setProfile={setProfile}
+                />
+                <Field
+                  label="Face Shape"
+                  field="face_shape"
+                  placeholder="e.g. oval, round, square"
+                  profile={profile}
+                  setProfile={setProfile}
+                />
+                <Field
+                  label="Hair Texture"
+                  field="hair_texture"
+                  placeholder="e.g. 4c coils, fine straight, wavy"
+                  profile={profile}
+                  setProfile={setProfile}
+                />
+                <Field
+                  label="Budget"
+                  field="budget"
+                  placeholder="e.g. drugstore, mid-range, luxury"
+                  profile={profile}
+                  setProfile={setProfile}
+                />
+              </div>
 
-                <div className="camera-actions">
-                  <button
-                    onClick={openCamera}
-                    className="primary-btn"
-                    disabled={analyzingFace}
-                  >
-                    {analyzingFace ? "Analyzing..." : "Open Camera 📸"}
-                  </button>
+              <div className="camera-actions">
+                <button
+                  onClick={openCamera}
+                  className="primary-btn"
+                  disabled={analyzingFace}
+                >
+                  {analyzingFace ? "Analyzing..." : "Open Camera"}
+                </button>
 
-                  <label className="secondary-btn">
-                    Upload Selfie
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileUpload}
-                      style={{ display: "none" }}
-                    />
-                  </label>
-                </div>
+                <label className="secondary-btn">
+                  Upload Selfie
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    style={{ display: "none" }}
+                  />
+                </label>
+              </div>
 
-                <p className="micro-copy">
-                  Use your camera live or upload a selfie so Glow Up Bot can
-                  estimate face shape, skin tone, undertone, and suggest
-                  flattering hairstyles.
-                </p>
-              </section>
-            </aside>
-          )}
+              <p className="micro-copy">
+                Use your camera live or upload a selfie so Glow Up Bot can
+                estimate face shape, skin tone, undertone, and suggest
+                flattering hairstyles.
+              </p>
+            </section>
+          </aside>
 
           <section className="chat-workspace">
             <section className="chat-card">
@@ -511,56 +558,15 @@ ${
 
                 {(loading || analyzingFace) && (
                   <div className="thinking-pill">
-                    Glow Up Bot is thinking...
+                    Alright I gotchu! Let me think...
                   </div>
                 )}
               </div>
             </section>
 
-            <section className="quick-actions">
-              <button
-                onClick={() =>
-                  sendQuick(
-                    "Give me the best hairstyles for my face shape and hair texture"
-                  )
-                }
-              >
-                💇🏽 Best Hairstyles
-              </button>
-
-              <button
-                onClick={() =>
-                  sendQuick(
-                    "What colors look best on me based on my skin tone and undertone"
-                  )
-                }
-              >
-                🎨 Best Colors
-              </button>
-
-              <button
-                onClick={() =>
-                  sendQuick(
-                    "Suggest a makeup look for my face shape, skin tone, and undertone"
-                  )
-                }
-              >
-                💄 Makeup Match
-              </button>
-
-              <button
-                onClick={() =>
-                  sendQuick(
-                    "Recommend culturally relevant beauty and hair products for my skin tone and hair type"
-                  )
-                }
-              >
-                🛍 Product Suggestions
-              </button>
-            </section>
-
-            <section className="composer-card">
+            <section className="composer-card" ref={composerRef}>
               <input
+                ref={inputRef}
                 type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
