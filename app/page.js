@@ -389,38 +389,55 @@ ${
       <div className="bg-orb orb-2" />
 
       <div className="app-wrap">
-        <header className="hero-card">
-          <div className="hero-top hero-split">
-            <div className="hero-copy">
-              <p className="eyebrow">AI Beauty Assistant</p>
-              <h1 className="hero-title">Glow Up Bot</h1>
-              <p className="hero-subtitle">
-                Personalized beauty, hair, skincare, and style guidance powered by your profile.
-              </p>
-            </div>
+        <header className="hero-card hero-modern">
+          <div className="hero-left">
+            <p className="eyebrow">AI Beauty Assistant</p>
+            <h1 className="hero-title">Glow Up Bot</h1>
+            <p className="hero-subtitle">
+              Personalized beauty, hair, skincare, and style guidance powered by your profile.
+            </p>
+          </div>
+
+          <div className="hero-right">
+            <p className="hero-action-title">Start with a category</p>
 
             <div className="hero-actions">
+              <button
+                onClick={() =>
+                  sendQuick("Give me the best hairstyles for my face shape and hair texture")
+                }
+              >
+                Best Hairstyles
+              </button>
 
-              <div className="feature-bar">
-                <button onClick={() => sendQuick("Give me the best hairstyles for my face shape and hair texture")}>
-                  Best Hairstyles
-                </button>
+              <button
+                onClick={() =>
+                  sendQuick("What colors look best on me based on my skin tone and undertone")
+                }
+              >
+                Best Colors
+              </button>
 
-                <button onClick={() => sendQuick("What colors look best on me based on my skin tone and undertone")}>
-                  Best Colors
-                </button>
+              <button
+                onClick={() =>
+                  sendQuick("Suggest a makeup look for my face shape, skin tone, and undertone")
+                }
+              >
+                Makeup Match
+              </button>
 
-                <button onClick={() => sendQuick("Suggest a makeup look for my face shape, skin tone, and undertone")}>
-                  Makeup Match
-                </button>
-
-                <button onClick={() => sendQuick("Recommend culturally relevant beauty and hair products for my skin tone and hair type")}>
-                  Product Suggestions
-                </button>
-              </div>
+              <button
+                onClick={() =>
+                  sendQuick("Recommend culturally relevant beauty and hair products for my skin tone and hair type")
+                }
+              >
+                Product Suggestions
+              </button>
             </div>
           </div>
         </header>
+
+
           <div className="feature-bar">
           </div>
 
