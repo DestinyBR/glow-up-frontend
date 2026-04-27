@@ -160,16 +160,7 @@ const [analysisComplete, setAnalysisComplete] = useState(false);
         "extra_context",
         "Please estimate face shape, skin tone, undertone, and suggest flattering hairstyles."
       );
-      formData.append(
-        "profile",
-        JSON.stringify({
-          ...profile,
-          skin_tone: "",
-          undertone: "",
-          face_shape: "",
-          hair_texture: "",
-        })
-      );
+      formData.append("profile", JSON.stringify(profile));
 
       const response = await fetch(
         process.env.NEXT_PUBLIC_API_URL + "/analyze-face",
@@ -508,9 +499,8 @@ ${
               </div>
 
               <p className="micro-copy">
-                Use your camera live or upload a selfie so Glow Up Bot can
-                estimate face shape, skin tone, undertone, and suggest
-                flattering hairstyles.
+                For best results, use bright front-facing lighting, keep your face centered, and hold the camera at eye level.
+                Avoid shadows, tilting your head, or covering your hairline.
               </p>
             </section>
           </aside>
