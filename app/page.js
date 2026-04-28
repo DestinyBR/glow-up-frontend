@@ -507,18 +507,28 @@ export default function Home() {
         ? { ...DEFAULT_PROFILE, ...data.profile }
         : { ...(profileRef.current || DEFAULT_PROFILE) };
 
-      let mergedProfile = baseProfile;
-      const savedFields = [];
-      for (const f of AUTO_FILL_FIELDS) {
-        const candidate = String(display?.[f] ?? raw?.[f] ?? "").trim();
-        if (candidate && !isUncertain(candidate)) {
-          if (mergedProfile[f] !== candidate) {
-            mergedProfile = { ...mergedProfile, [f]: candidate };
-            savedFields.push(f);
-          }
-        }
-      }
-      setProfile(mergedProfile);
+      let mergedProfile = { ...baseProfile };
+const savedFields = [];
+
+for (const f of AUTO_FILL_FIELDS) {
+  const displayValue = String(display?.[f] || "").trim();
+  const rawValue = String(raw?.[f] || "").trim();
+
+  // IMPORTANT:
+  // Use stabilized value only if it is real.
+  // If stabilized says uncertain, fall back to the raw photo result.
+  const candidate = !isUncertain(displayValue) ? displayValue : rawValue;
+
+  if (candidate && !isUncertain(candidate)) {
+    mergedProfile = {
+      ...mergedProfile,
+      [f]: candidate,
+    };
+    savedFields.push(f);
+  }
+}
+
+setProfile(mergedProfile);
 
       const unc = (v) => !v || ["uncertain","not clearly visible","not detected"].includes(v?.toLowerCase());
       const fmt = (lbl, v) => unc(v) ? `${lbl}: uncertain` : `${lbl}: ${v}`;
