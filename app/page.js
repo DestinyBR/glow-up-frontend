@@ -4,6 +4,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 const DEFAULT_PROFILE = {
   name: "",
+  gender_presentation: "",
+  style_goals: "",
+  skin_concerns: "",
+  hair_type_confirmed: "",
+  preferred_makeup_style: "",
+  fashion_preference: "",
   favorite_colors: [],
   favorite_styles: [],
   best_colors: [],
@@ -469,118 +475,177 @@ export default function Home() {
 
   // ── Analysis ───────────────────────────────────────────────────────────
   async function analyzeBlob(blob) {
-    setAnalyzingFace(true);
-    setAnalysisComplete(false);
-    setAnalysisProgress(10);
-    const interval = setInterval(() => setAnalysisProgress((p) => p >= 88 ? p : p + 8), 500);
-    try {
-      const stepDef = PHOTO_STEPS[currentPhotoStep - 1];
-      const ctx = stepDef
-        ? `This is Photo ${currentPhotoStep}: ${stepDef.purpose}. ${stepDef.description}`
-        : "Please estimate face shape, skin tone, undertone, and suggest flattering hairstyles.";
+  setAnalyzingFace(true);
+  setAnalysisComplete(false);
+  setAnalysisProgress(10);
 
-      const fd = new FormData();
-      fd.append("file", blob, "selfie.jpg");
-      fd.append("extra_context", ctx);
-      fd.append("profile", JSON.stringify(profile));
-      fd.append("analysis_history", JSON.stringify(analysisHistory));
+  const interval = setInterval(() => {
+    setAnalysisProgress((p) => (p >= 88 ? p : p + 8));
+  }, 500);
 
-      const res  = await fetch(process.env.NEXT_PUBLIC_API_URL + "/analyze-face", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Face analysis failed");
+  try {
+    const stepDef = PHOTO_STEPS[currentPhotoStep - 1];
 
-      const newHistory = data.analysis_history || [];
-      saveAnalysisHistory(newHistory);
+    const ctx = stepDef
+      ? `This is Photo ${currentPhotoStep}: ${stepDef.purpose}. ${stepDef.description}`
+      : "Please estimate face shape, skin tone, undertone, and hair texture/style.";
 
-      const display        = data.stabilized || data.analysis || {};
-      const raw            = data.analysis   || {};
-      const nAnalyses      = newHistory.length;
-      const confidenceScore = display.confidence_score ?? raw.confidence_score ?? 0;
+    const fd = new FormData();
+    fd.append("file", blob, "selfie.jpg");
+    fd.append("extra_context", ctx);
+    fd.append("profile", JSON.stringify(profileRef.current || profile));
+    fd.append("analysis_history", JSON.stringify(analysisHistory));
+    fd.append("force_update", "false");
 
-      // ── Always pull confident detections into the profile ─────────────
-      // The backend has a confidence gate that can prevent face_shape /
-      // hair_texture from saving. We override that here: if the model
-      // committed to a non-uncertain value (e.g. "braids", "oval"), we
-      // write it to the profile so the form fields stay in sync with
-      // what the bot just told the user.
-      const baseProfile = data.profile
-        ? { ...DEFAULT_PROFILE, ...data.profile }
-        : { ...(profileRef.current || DEFAULT_PROFILE) };
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
-      let mergedProfile = { ...baseProfile };
-const savedFields = [];
+    const res = await fetch(`${apiBase}/analyze-face`, {
+      method: "POST",
+      body: fd,
+    });
 
-for (const f of AUTO_FILL_FIELDS) {
-  const displayValue = String(display?.[f] || "").trim();
-  const rawValue = String(raw?.[f] || "").trim();
+    const data = await res.json();
 
-  // IMPORTANT:
-  // Use stabilized value only if it is real.
-  // If stabilized says uncertain, fall back to the raw photo result.
-  const candidate = !isUncertain(displayValue) ? displayValue : rawValue;
+    if (!res.ok) {
+      throw new Error(data.detail || "Face analysis failed");
+    }
 
-  if (candidate && !isUncertain(candidate)) {
-    mergedProfile = {
-      ...mergedProfile,
-      [f]: candidate,
+    const newHistory = Array.isArray(data.analysis_history)
+      ? data.analysis_history
+      : analysisHistory;
+
+    saveAnalysisHistory(newHistory);
+
+    const raw = data.analysis || {};
+    const display = data.stabilized || raw || {};
+    const nAnalyses = newHistory.length || 1;
+
+    const confidenceScore =
+      Number(display.confidence_score ?? raw.confidence_score ?? 0);
+
+    const isHighConfidence = confidenceScore >= 0.75;
+    const isMediumConfidence = confidenceScore >= 0.5 && confidenceScore < 0.75;
+    const needsAnotherScan = confidenceScore < 0.75;
+
+    const currentSavedProfile = profileRef.current || DEFAULT_PROFILE;
+
+    let savedFields = [];
+
+    if (isHighConfidence && data.profile) {
+      const nextProfile = { ...currentSavedProfile, ...data.profile };
+
+      for (const field of ["face_shape", "skin_tone", "undertone", "hair_texture"]) {
+        const oldValue = String(currentSavedProfile[field] || "").trim();
+        const newValue = String(nextProfile[field] || "").trim();
+
+        if (newValue && !isUncertain(newValue) && oldValue !== newValue) {
+          savedFields.push(field);
+        }
+      }
+
+      setProfile(nextProfile);
+    }
+
+    const unc = (v) =>
+      !v ||
+      ["uncertain", "not clearly visible", "not detected"].includes(
+        String(v).toLowerCase().trim()
+      );
+
+    const fmt = (label, value) => {
+      return unc(value) ? `${label}: uncertain` : `${label}: ${value}`;
     };
-    savedFields.push(f);
-  }
-}
 
-setProfile(mergedProfile);
+    const confidenceLabel = isHighConfidence
+      ? "High confidence"
+      : isMediumConfidence
+      ? "Medium confidence"
+      : "Low confidence";
 
-      const unc = (v) => !v || ["uncertain","not clearly visible","not detected"].includes(v?.toLowerCase());
-      const fmt = (lbl, v) => unc(v) ? `${lbl}: uncertain` : `${lbl}: ${v}`;
+    const stabilizationNote =
+      nAnalyses < MAX_ANALYSIS_HISTORY
+        ? `📸 Photo ${nAnalyses}/${MAX_ANALYSIS_HISTORY} complete — ${
+            MAX_ANALYSIS_HISTORY - nAnalyses
+          } more photo(s) will improve accuracy.`
+        : "✅ All 3 photos analyzed — results are stabilized.";
 
-      const stabilizationNote = nAnalyses < MAX_ANALYSIS_HISTORY
-        ? `📸 Photo ${nAnalyses}/${MAX_ANALYSIS_HISTORY} complete — ${MAX_ANALYSIS_HISTORY - nAnalyses} more photo(s) will improve accuracy.`
-        : `✅ All 3 photos analyzed — results are stabilized.`;
+    const profileNote = isHighConfidence
+      ? savedFields.length
+        ? `💾 Saved to your profile: ${savedFields
+            .map((f) => f.replace("_", " "))
+            .join(", ")}.`
+        : "💾 High confidence result received. Your saved profile did not need changes."
+      : "⚠️ Needs another scan — I did not save this result because confidence was not high enough.";
 
-      const profileNote = savedFields.length
-        ? `💾 Saved to your profile: ${savedFields.map((f) => f.replace("_", " ")).join(", ")}.`
-        : (data.should_update_profile
-            ? "💾 Profile updated with these results."
-            : "⚠️ Nothing confident enough to save to your profile this round.");
+    const safetyNote = needsAnotherScan
+      ? "\n\nWhy not saved: this prevents one unclear photo or a different person from overwriting the saved profile."
+      : "";
 
-      const nudge = buildNudgeMessage(display, nAnalyses);
+    const nudge = buildNudgeMessage(display, nAnalyses);
 
-      const reply = `Here's your selfie analysis ✨
+    const reply = `Here's your selfie analysis ✨
 
 ${stabilizationNote}
 ${profileNote}
 
+Confidence: ${confidenceLabel} (${Math.round(confidenceScore * 100)}%)
+
 ${fmt("Face shape", display.face_shape)}
-${fmt("Skin tone",  display.skin_tone)}
-${fmt("Undertone",  display.undertone)}
+${fmt("Skin tone", display.skin_tone)}
+${fmt("Undertone", display.undertone)}
 ${fmt("Hair texture/style", display.hair_texture)}
 
-${display.confidence_note || raw.confidence_note || ""}
+${display.confidence_note || raw.confidence_note || ""}${safetyNote}
 
 Best hairstyle directions:
-${Array.isArray(display.hairstyle_directions) && display.hairstyle_directions.length
-  ? display.hairstyle_directions.map((i) => `• ${i}`).join("\n")
-  : "• No suggestions returned"}
+${
+  Array.isArray(display.hairstyle_directions) &&
+  display.hairstyle_directions.length
+    ? display.hairstyle_directions.map((i) => `• ${i}`).join("\n")
+    : "• No suggestions returned"
+}
 
-Suggested makeup look: ${display.makeup_look  || raw.makeup_look  || "Not provided"}
-Blush placement: ${display.blush_placement     || raw.blush_placement || "Not provided"}
-Contour/Bronzer: ${display.contour_bronzer     || raw.contour_bronzer || "Not provided"}
+Suggested makeup look: ${display.makeup_look || raw.makeup_look || "Not provided"}
+Blush placement: ${display.blush_placement || raw.blush_placement || "Not provided"}
+Contour/Bronzer: ${display.contour_bronzer || raw.contour_bronzer || "Not provided"}
 
 Lip shades:
-${Array.isArray(display.lip_shades) && display.lip_shades.length
-  ? display.lip_shades.map((i) => `• ${i}`).join("\n")
-  : "• No lip shades returned"}${nudge || ""}`.trim();
+${
+  Array.isArray(display.lip_shades) && display.lip_shades.length
+    ? display.lip_shades.map((i) => `• ${i}`).join("\n")
+    : "• No lip shades returned"
+}${nudge || ""}`.trim();
 
-      setChatHistory((prev) => [...prev, { role: "assistant", content: reply, type: "text", confidenceScore }]);
-    } catch (err) {
-      setChatHistory((prev) => [...prev, { role: "assistant", content: err.message || "Something went wrong.", type: "text" }]);
-    } finally {
-      clearInterval(interval);
-      setAnalysisProgress(100);
-      setAnalysisComplete(true);
-      setTimeout(() => { setAnalyzingFace(false); setAnalysisComplete(false); setAnalysisProgress(0); }, 900);
-    }
+    setChatHistory((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: reply,
+        type: "text",
+        confidenceScore,
+      },
+    ]);
+  } catch (err) {
+    setChatHistory((prev) => [
+      ...prev,
+      {
+        role: "assistant",
+        content: err.message || "Something went wrong.",
+        type: "text",
+      },
+    ]);
+  } finally {
+    clearInterval(interval);
+    setAnalysisProgress(100);
+    setAnalysisComplete(true);
+
+    setTimeout(() => {
+      setAnalyzingFace(false);
+      setAnalysisComplete(false);
+      setAnalysisProgress(0);
+    }, 900);
   }
+}
 
   async function capturePhoto() {
     if (!videoRef.current || !canvasRef.current) return;
@@ -698,15 +763,32 @@ ${Array.isArray(display.lip_shades) && display.lip_shades.length
           <aside className="profile-sidebar">
             <section className="panel-card profile-card">
               <h2 className="panel-title">Your Beauty Profile</h2>
-              <p className="panel-copy">Fill this in so Glow Up Bot gives you more personalized advice. Saves automatically.</p>
+              <p className="panel-copy">Fill this in so I can give you more personalized advice. </p>
 
               <div className="profile-grid">
-                <Field label="Your Name"    field="name"         placeholder="e.g. Destiny"                    profile={profile} setProfile={setProfile}/>
-                <Field label="Skin Tone"    field="skin_tone"    placeholder="e.g. light, medium, deep brown"  profile={profile} setProfile={setProfile}/>
-                <Field label="Undertone"    field="undertone"    placeholder="e.g. warm, cool, neutral"        profile={profile} setProfile={setProfile}/>
-                <Field label="Face Shape"   field="face_shape"   placeholder="e.g. oval, round, square"       profile={profile} setProfile={setProfile}/>
-                <Field label="Hair Texture" field="hair_texture" placeholder="e.g. 4c coils, braids, locs"    profile={profile} setProfile={setProfile}/>
-                <Field label="Budget"       field="budget"       placeholder="e.g. drugstore, mid-range"      profile={profile} setProfile={setProfile}/>
+                <Field label="Your Name" field="name" placeholder="e.g. Destiny" profile={profile} setProfile={setProfile}/>
+
+                <Field label="Gender / Presentation Preference" field="gender_presentation" placeholder="e.g. feminine, masculine, androgynous, soft glam" profile={profile} setProfile={setProfile}/>
+
+                <Field label="Style Goals" field="style_goals" placeholder="e.g. polished, soft, confident, professional" profile={profile} setProfile={setProfile}/>
+
+                <Field label="Skin Concerns" field="skin_concerns" placeholder="e.g. hyperpigmentation, acne, dryness, texture" profile={profile} setProfile={setProfile}/>
+
+                <Field label="Hair Type Confirmation" field="hair_type_confirmed" placeholder="e.g. I currently have braids, locs, wig, 4c coils" profile={profile} setProfile={setProfile}/>
+
+                <Field label="Preferred Makeup Style" field="preferred_makeup_style" placeholder="e.g. natural, soft glam, full glam, no makeup look" profile={profile} setProfile={setProfile}/>
+
+                <Field label="Fashion Preference" field="fashion_preference" placeholder="e.g. modest, bold, natural, classy, streetwear" profile={profile} setProfile={setProfile}/>
+
+                <Field label="Skin Tone" field="skin_tone" placeholder="e.g. light, medium, deep brown" profile={profile} setProfile={setProfile}/>
+
+                <Field label="Undertone" field="undertone" placeholder="e.g. warm, cool, neutral" profile={profile} setProfile={setProfile}/>
+
+                <Field label="Face Shape" field="face_shape" placeholder="e.g. oval, round, square" profile={profile} setProfile={setProfile}/>
+
+                <Field label="Hair Texture" field="hair_texture" placeholder="AI estimate: braids, locs, coils, wavy" profile={profile} setProfile={setProfile}/>
+
+                <Field label="Budget" field="budget" placeholder="e.g. drugstore, mid-range" profile={profile} setProfile={setProfile}/>
               </div>
 
               {/* ── Photo progress ── */}
