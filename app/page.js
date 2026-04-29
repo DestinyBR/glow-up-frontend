@@ -248,6 +248,7 @@ export default function Home() {
   const [cameraReady,      setCameraReady]      = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisComplete, setAnalysisComplete] = useState(false);
+  const [aiStatus, setAiStatus] = useState("Ready");
   const [currentPhotoStep, setCurrentPhotoStep] = useState(0);
   const [photosTaken,      setPhotosTaken]      = useState(0);
   const [brightness,       setBrightness]       = useState(null);
@@ -452,6 +453,7 @@ export default function Home() {
     setCurrentPhotoStep(step);
     setCameraError("");
     setCameraOpen(true);
+    setAiStatus("Camera opened");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -478,6 +480,7 @@ export default function Home() {
   setAnalyzingFace(true);
   setAnalysisComplete(false);
   setAnalysisProgress(10);
+  setAiStatus("Analyzing image...");
 
   const interval = setInterval(() => {
     setAnalysisProgress((p) => (p >= 88 ? p : p + 8));
@@ -544,6 +547,7 @@ export default function Home() {
       }
 
       setProfile(nextProfile);
+      setAiStatus("Saved to profile");
     }
 
     const unc = (v) =>
@@ -568,6 +572,10 @@ export default function Home() {
             MAX_ANALYSIS_HISTORY - nAnalyses
           } more photo(s) will improve accuracy.`
         : "✅ All 3 photos analyzed — results are stabilized.";
+
+    if (!isHighConfidence) {
+      setAiStatus("Low confidence — please confirm");
+    }
 
     const profileNote = isHighConfidence
       ? savedFields.length
@@ -634,10 +642,12 @@ ${
         type: "text",
       },
     ]);
+
   } finally {
     clearInterval(interval);
     setAnalysisProgress(100);
     setAnalysisComplete(true);
+    setAiStatus("Analysis complete");
 
     setTimeout(() => {
       setAnalyzingFace(false);
@@ -659,6 +669,7 @@ ${
       setAnalyzingFace(false);
       closeCamera();
     }, "image/jpeg", 0.95);
+    setAiStatus("Photo captured");
   }
 
   async function handleFileUpload(e) {
@@ -1051,6 +1062,18 @@ ${
                   </div>
                   <div className="analysis-box">
                     <p className="analysis-title">
+                      <p className="analysis-title">{aiStatus}</p>
+
+                      <div className="progress-track">
+                        <div
+                          className="progress-fill"
+                          style={{ width: `${analysisProgress}%` }}
+                        />
+                      </div>
+
+                      <p className="analysis-percent">
+                        {analysisProgress}% complete
+                      </p>
                       {analysisComplete ? "Analysis complete ✓" : `Analyzing photo ${currentPhotoStep}...`}
                     </p>
                     <div className="progress-track">
